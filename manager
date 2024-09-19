@@ -1,0 +1,186 @@
+#!/bin/bash
+
+script_name=${0##*/}					#build.sh
+script_full=`realpath $0`				#/path/build.sh
+script_path=`dirname "$script_full"` 	#/path/
+dir_name=`basename "$script_path"`		#Project base dir
+
+print_library () {
+	echo -e "\033[1m\033[32m$1\033[0m"
+}
+
+submodules=($(git config --file .gitmodules --get-regexp path | awk '{ print $2 }'))
+
+libraries=($(cat Libraries.txt))
+
+case "$1" in
+	check_libs)
+		for lib in "${libraries[@]}"
+		do
+			module_name=$(basename "$lib" .git | sed 's/\.git$//')
+			module_path="lps_libraries/$module_name"
+
+
+			alredy_done=false
+			for sub in "${submodules[@]}"; do
+				if [[ "$sub" == "$module_path" ]]; then
+					alredy_done=true
+					break
+				fi
+			done
+
+			print_library $module_name
+			if [ "$alredy_done" != true ]; then
+				echo "Adding submodule"
+				git submodule add $lib "$module_path"
+			else
+				echo "Submodule already added"
+			fi
+
+		done
+
+		git submodule update --init --recursive
+	;;
+
+	status)
+		for sub in "${submodules[@]}"; do
+			cd $sub
+			status=$(git status -s)
+			if [ -n "$status" ]; then
+				print_library $sub
+				echo "$status"
+			fi
+			cd "$script_path"
+		done
+
+		status=$(git status -s)
+		if [ -n "$status" ]; then
+			print_library "$dir_name"
+			echo "$status"
+		fi
+	;;
+
+	log)
+		print_library $dir_name
+		s=$(git log -1 --format="%h -> %s")
+		echo "$s"
+
+		for sub in "${submodules[@]}"
+		do
+			cd "$script_path/$sub"
+			print_library $sub
+
+			branch=$(git branch --show-current)
+			commit=$(git log -1 --format="%h - %s")
+			tags=$(git tag -l)
+
+			echo -e " - Branch:\t$branch"
+			echo -e " - Commit:\t$commit"
+			if [ -n "$tags" ]; then
+				echo -e " - Tags:\t"$tags
+			fi
+		done
+	;;
+
+	pull)
+		for sub in "${submodules[@]}"; do
+			print_library $sub
+			cd $sub
+			git pull
+			cd "$script_path"
+		done
+
+		print_library "$dir_name"
+		git pull
+		git fetch -f --tags
+	;;
+
+	push)
+		for sub in "${submodules[@]}"; do
+			print_library $sub
+			cd $sub
+			git push
+			cd "$script_path"
+		done
+
+		print_library "$dir_name"
+		git push
+		git push -f --tags
+	;;
+
+	install)
+		for sub in "${submodules[@]}"
+		do
+			print_library $sub
+			cd "$script_path/$sub/src"
+			pip install -e . --user
+		done
+	;;
+
+	deploy)
+		for sub in "${submodules[@]}"
+		do
+			print_library $sub
+			cd "$script_path/$sub/src"
+			pip install . --user
+		done
+	;;
+
+	todo)
+		for sub in "${submodules[@]}"
+		do
+			cd "$script_path/$sub"
+			grep --color -nR TODO
+			
+		done
+	;;
+
+	count)
+		for sub in "${submodules[@]}"
+		do
+			print_library $sub
+			cd "$script_path/$sub"
+			find . -path './*.py' | xargs wc -l | tail -n 1
+		done
+
+		print_library $dir_name
+		cd "$script_path"
+		find . -path './lps_libraries' -prune -o -name '*.py' -print | xargs wc -l | tail -n 1
+	;;
+	
+	pack)
+		#$script_full clean
+		file_name=$(date +"$dir_name"_%Y-%m-%d_%H:%M.tar.gz)
+		echo "Compressing... "
+		cd ../
+		tar -czf "./$file_name" $dir_name
+		
+		if [ "$2" != "" ]; then
+			md5_bf=`md5sum $file_name | cut -d " " -f1`
+			echo md5sum: $md5
+			mv $file_name "$2/$file_name"
+			md5_af=`md5sum "$2/$file_name" | cut -d " " -f1`
+			if [ $md5_bf == $md5_af ]; then
+				echo "$file_name copied"
+			else
+				echo "Copy error"
+			fi
+		else
+			md5=`md5sum $file_name | cut -d " " -f1`
+			echo md5sum: $md5
+		fi
+	;;
+	
+	list)
+		echo check_libs status log pull push install deploy todo count pack list
+	;;
+
+	*)
+		echo "$script_name {check_libs | status | log | pull | push | install | deploy | todo | count | pack | list}"
+		echo "Details in: $script_full"
+		exit 1
+	;;
+esac 
+ 
+exit 0
+
