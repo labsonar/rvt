@@ -1,5 +1,5 @@
 ## Introduction
-This project provides a basic template for managing multiple Python libraries development in the template_library format.
+This is a Python project in developement within LabSonar/LPS to produce acoustical detector for RVT project.
 
 ## Authors
 - **Developer**: [Fábio Oliveira](https://github.com/obs-fabio)
