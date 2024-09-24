@@ -1,84 +1,76 @@
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import librosa
-import librosa.display
+import bisect # busca binaria pra implementada
 import sys
 import os
-from torch.utils.data import Dataset
+from scipy.io import wavfile
 
+# Precisamos de uma funcao assim:
+# Acessar audio da boiax do dia Y do instante A ateh o instante B
 
-root = "RVT"
-folder = "Dados"
-
-max_freq = 570 
-
-path = os.path.join(root,folder)
-
-class WAVDataset(Dataset):
+class RVTDataloader():
     
-    def __init__( self , path : str , transform=None ) :
-        self.data = []
-        self.label = []
-        self.transform = transform
-        
-        self.dfs(path)
+    def __init__(self , root : str) :
+        self.root = root
+        self.data = {}
     
-    def __len__( self ) :
-        return len(self.data)
-    
-    def __getitem__( self , index : int ) :
+        days = sorted(os.listdir(root))
+        for day in days:
+            path_ = os.path.join(root,day)
+            
+            if not os.path.isdir(path_) : 
+                raise JunkFile(path_)
+            
+            self.data[day] = {}
+            
+            boias = sorted(os.listdir(path_))
+            for boia in boias :
+                path_ = os.path.join(root,day,boia)
+                
+                if not os.path.isdir(path_) : 
+                    raise JunkFile(path_)
+                
+                self.data[day][boia] = []     
+                
+                archives = sorted(os.listdir(path_))
+                for archive in archives :
+                    path_ = os.path.join(root,day,boia,archive)
+                    
+                    if not path_.endswith('.wav') :
+                        raise JunkFile(path_)
+                    
+                    self.data[day][boia].append(path_)
         
-        data = self.data[index]
-        label = self.data[index]
+        self.data = pd.DataFrame(self.data)
         
-        if self.transform : data = self.transform(data)
+    # Retorna a quantidade de arquivos.wav
+    def __len__(self) :
+        return self.data.applymap(len).sum().sum()
         
-        return data , label
-    
-    def dfs( self , folder : str ) :
-        subfolders = sorted(os.listdir(folder))
+    def acess(self , dia : str , boia : str , a : any , b : any) :
         
-        for file in subfolders :
-            path = os.path.join(folder,file)
-                        
-            if  path.endswith('.wav') :         
-                self.data.append(read_wav(path))
-                self.label.append(read_label(path))
-
-            elif os.path.isdir(path) : 
-                self.dfs(path)
-
-            else:
-                sys.exit(f'Arquivo indesejado {path}')
-
-
-# Por favor alguem verifica se essa funcao aq ta certo
-# Nao sei se entendi 100% doq vamos considerar como dado e rotulo
-def read_wav(path : str , show=False) :
-    
-    audio, sr = librosa.load(path)
-
-    stft = librosa.stft(audio)
-
-    # Converter para amplitude em dB (opcional)
-    stft_db = librosa.amplitude_to_db(np.abs(stft), ref=np.max)
-
-    # Transpor a matriz para (tempo, frequência)
-    stft_db_transposto = stft_db.T
-
-    if show :
-        librosa.display.specshow(stft_db_transposto, sr=sr, x_axis='linear', y_axis='time')
-        plt.colorbar(format='%+2.0f dB')
-        plt.title('Espectrograma (Tempo vs Frequência)')
-        plt.xlabel('Frequência (Hz)')
-        plt.ylabel('Tempo (s)')
-        plt.show()
+        # Antes de tudo, criar um formato para recebermos o dia e a boia
+        # podemos converter isso no construtor, ou na hora de acessar os arquivos
         
-    return stft_db_transposto
+        # concatenar todos os audios entre a e b
+        for audio in self.data[dia][boia]:
+            
+            audio_ = os.path.basename(audio)
+            
+            #audio_ = transform(audio) # mensurar em numeros 
+            if a <= audio_ <= b : 
+                taxa_de_amostragem , dados = wavfile.read(audio)
+                #concatenate(dados)
 
-def read_label(path : str) : pass
+class JunkFile(Exception):
+    def __init__(self , path : str) :
+        super().__init__(f'Arquivo Indesejado: {path}')
 
 if __name__ == "__main__" : 
     
-    read_wav('RVT/Teste/teste.wav',True)
+    root = "RVT"
+    folder = "Dados"
+
+    path = os.path.join(root,folder)
+    
+    RVTDataloader(path)
