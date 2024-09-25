@@ -1,3 +1,4 @@
+''' Dataloader para gerenciar o sistema de audios do RVT '''
 import os
 import datetime
 import typing
@@ -5,6 +6,7 @@ import typing
 import lps_utils.utils as lps_utils
 
 class DataLoader():
+    ''' Dataloader para gerenciar os audios providos pelas boias '''
 
     def __init__(self, base_path: str) -> None:
         self.file_dict = DataLoader.get_file_dict(base_path)
@@ -17,6 +19,10 @@ class DataLoader():
     @staticmethod
     def get_file_dict(base_path: str) -> \
         typing.Dict[int, typing.List[typing.Tuple[datetime.datetime, str]]]:
+        ''' 
+            Funcao para auxiliar o construtor da classe.
+            Transforma uma pasta de arquivos em um dataframe
+        '''
         file_dict = {}
 
         for file in lps_utils.find_files(base_path):
@@ -56,9 +62,13 @@ class DataLoader():
         return file_dict
 
 
-    def get_data(buoy_id: int, start_time: datetime.datetime, end_time: datetime.datetime):
-        pass
+    def get_data(self, buoy_id: int, start_time: datetime.datetime, end_time: datetime.datetime,
+                decimate=None):
+        '''
+            Funcao para acessar e concatenar dados em um intervalo de tempo para determinada boia
+        '''
 
 
 if __name__ == "__main__":
-    DataLoader("./raw_data")
+    DataLoader("./Data/RVT/raw_data")
+    

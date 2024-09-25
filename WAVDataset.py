@@ -17,7 +17,7 @@ class RVTDataloader():
         for day in days:
             path_ = os.path.join(self.root,day)
             
-            if not os.path.isdir(path_) : 
+            if not os.path.isdir(path_): 
                 raise FileError(f'Arquivo Indesejado: {path_}')
             
             self.data[day] = {}
