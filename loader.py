@@ -2,6 +2,7 @@
 import os
 import datetime
 import typing
+import bisect
 import numpy as np
 from scipy.io import wavfile # Nao sei se tem alguma biblioteca no Lps_utils que recebe audios
 
@@ -64,44 +65,82 @@ class DataLoader():
 
         return file_dict
 
-    def get_data(self, buoy_id: int, start_time: datetime.datetime, end_time: datetime.datetime,
-                decimate_num=None):
+    def get_data(self, buoy_id: int, start_time: datetime.datetime, end_time: datetime.datetime):
         '''
             Funcao para acessar e concatenar dados em um intervalo de tempo para determinada boia
         '''
 
         data_resp = []
-        taxa = decimate_num
-        for time , audio_path in self.file_dict[buoy_id]:
+        taxa = None
 
-            # Posso fazer uma busca binaria pra achar o inicio e o fim na lista
-            # (se precisar otimizar depois , ai nao precisa iterar por todos os audios)
+        # Duas buscas binarias
+        # Se o elemento nao for encontrado na busca binaria, eh encontrado um valor maior
+        start = bisect.bisect_left(self.file_dict[buoy_id], (start_time, ""))
+        end = bisect.bisect_left(self.file_dict[buoy_id], (end_time, ""))
+        end-=1 # assim garanto que o indice end esta na lista original
 
-            if start_time <= time <= end_time :
+        for index in range(start,end):
 
-                taxa_de_amostragem , dados = wavfile.read(audio_path)
+            audio_path = self.file_dict[buoy_id][index][1]
 
-                if decimate_num :
-                    dados = decimate(dados, decimate_num)
-                elif not taxa :
-                    taxa = taxa_de_amostragem
-                elif taxa != taxa_de_amostragem :
-                    dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
+            taxa_de_amostragem , dados = wavfile.read(audio_path)
 
-                data_resp.append(dados)
+            if not taxa :
+                taxa = taxa_de_amostragem
+            elif taxa != taxa_de_amostragem :
+                dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
 
-        data_resp = np.concatenate(data_resp)
+            data_resp.append(dados)
 
-        return taxa , data_resp
+        # Depois do intervalo geral, vamos fixar as pontas
 
+        if self.file_dict[buoy_id][start][0] > start_time:
+
+            if start==0 :
+                raise ValueError("Nao existem dados no intervalo de tempo inteiro")
+
+            time , audio_path = self.file_dict[buoy_id][start-1]
+            taxa_de_amostragem , dados = wavfile.read(audio_path)
+
+            if not taxa :
+                taxa = taxa_de_amostragem
+            elif taxa != taxa_de_amostragem :
+                dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
+
+            index = abs(start_time.second - time.second) * taxa
+            if index < 0 or index >= len(dados):
+                raise ValueError("Erro de conta no get_data()")
+
+            data_resp.insert(0,dados[index:])
+
+        if self.file_dict[buoy_id][end][0] < end_time:
+
+            if end==len(self.file_dict[buoy_id]) :
+                raise ValueError("Nao existem dados no intervalo de tempo inteiro")
+
+            time , audio_path = self.file_dict[buoy_id][end+1]
+            taxa_de_amostragem , dados = wavfile.read(audio_path)
+
+            if not taxa :
+                taxa = taxa_de_amostragem
+            elif taxa != taxa_de_amostragem :
+                dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
+
+            index = abs(end_time.second - time.second) * taxa
+            if index < 0 or index >= len(dados):
+                raise ValueError("Erro de conta no get_data()")
+
+            data_resp.append(dados[:index])
+
+        return taxa , np.concatenate(data_resp)
 
 if __name__ == "__main__":
     data = DataLoader("./Data/RVT/raw_data")
 
-    start = datetime.datetime(2024, 1, 19, 13, 41, 0)
-    end = datetime.datetime(2024, 1, 19, 13, 45, 0)
+    start_ = datetime.datetime(2024, 1, 19, 13, 41, 0)
+    end_ = datetime.datetime(2024, 1, 19, 13, 45, 0)
 
-    taxa_ , data_ = data.get_data(2,start,end)
+    taxa_ , data_ = data.get_data(2,start_,end_)
 
     wavfile.write('teste.wav',taxa_,data_) # Nao consigo ouvir o audio, talvez eu tenha errado
     
