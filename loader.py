@@ -142,5 +142,5 @@ if __name__ == "__main__":
 
     taxa_ , data_ = data.get_data(2,start_,end_)
 
-    wavfile.write('teste.wav',taxa_,data_) # Nao consigo ouvir o audio, talvez eu tenha errado
+    wavfile.write('teste.wav',taxa_,data_)
     
