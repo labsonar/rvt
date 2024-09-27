@@ -140,10 +140,10 @@ class DataLoader():
 if __name__ == "__main__":
     data = DataLoader("./Data/RVT/raw_data")
 
-    start_ = datetime.datetime(2024, 1, 19, 13, 41, 0)
-    end_ = datetime.datetime(2024, 1, 19, 13, 42, 0)
+    #start_ = datetime.datetime(2024, 1, 19, 13, 41, 0)
+    #end_ = datetime.datetime(2024, 1, 19, 13, 42, 0)
 
-    taxa_ , data_ = data.get_data(2,start_,end_)
+    #taxa_ , data_ = data.get_data(2,start_,end_)
 
-    wavfile.write('teste.wav',taxa_,data_)
+    #wavfile.write('teste.wav',taxa_,data_)
     
