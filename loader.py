@@ -15,10 +15,10 @@ class DataLoader():
     def __init__(self, base_path: str) -> None:
         self.file_dict = DataLoader.get_file_dict(base_path)
 
-        for buoy_id, file_list in self.file_dict.items():
-            print(buoy_id)
-            for file in file_list:
-                print('\t: ', file[0], " -> ", file[1])
+        # for buoy_id, file_list in self.file_dict.items():
+        #     print(buoy_id)
+        #     for file in file_list:
+        #         print('\t: ', file[0], " -> ", file[1])
 
     @staticmethod
     def get_file_dict(base_path: str) -> \
@@ -70,14 +70,24 @@ class DataLoader():
             Funcao para acessar e concatenar dados em um intervalo de tempo para determinada boia
         '''
 
+        print("\tDesired times: ", start_time, " -> ", end_time)
+
         data_resp = []
         taxa = None
 
-        # Duas buscas binarias
-        # Se o elemento nao for encontrado na busca binaria, eh encontrado um valor maior
+        #Binary search to find where this date and time should be inserted to keep the list in order
         start = bisect.bisect_left(self.file_dict[buoy_id], (start_time, ""))
         end = bisect.bisect_left(self.file_dict[buoy_id], (end_time, ""))
-        end-=1 # assim garanto que o indice end esta na lista original
+
+        if start == 0 or end == len(self.file_dict[buoy_id]):
+            raise ValueError("Requested date and time out of range")
+
+        start -= 1
+        # Starting index pointing to the first file with data above the requested start time.
+        # Therefore, the request time is part of the previous file
+
+        print("\tIndexes: ", start, " -> ", end)
+        print("\tRecorded files: ", self.file_dict[buoy_id][start][1], " -> ", self.file_dict[buoy_id][end][1])
 
         for index in range(start,end):
 
@@ -92,58 +102,32 @@ class DataLoader():
 
             data_resp.append(dados)
 
-        # Depois do intervalo geral, vamos fixar as pontas
+        data_resp = np.concatenate(data_resp)
 
-        if self.file_dict[buoy_id][start][0] > start_time:
+        start_overhead = int((start_time - self.file_dict[buoy_id][start][0]).total_seconds() * taxa)
+        data_resp = data_resp[start_overhead:]
 
-            if start==0 :
-                raise ValueError("Nao existem dados no intervalo de tempo inteiro")
+        desired_n_samples = int((end_time - start_time).total_seconds() * taxa)
 
-            time , audio_path = self.file_dict[buoy_id][start-1]
-            taxa_de_amostragem , dados = wavfile.read(audio_path)
+        if len(data_resp) < desired_n_samples:
+            # True only if the desired data range is not continuously recorded in the raw files
+            raise ValueError("Requested date and time out of range")
 
-            if not taxa :
-                taxa = taxa_de_amostragem
-            elif taxa != taxa_de_amostragem :
-                dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
+        data_resp = data_resp[:desired_n_samples]
 
-            delta = start_time - time
-            index = int(delta.total_seconds() * taxa)
-            if index < 0 or index >= len(dados):
-                raise ValueError("Erro de conta no get_data()")
-
-            print(delta)
-            data_resp.insert(0,dados[index:])
-
-        if self.file_dict[buoy_id][end][0] < end_time:
-
-            if end==len(self.file_dict[buoy_id]) :
-                raise ValueError("Nao existem dados no intervalo de tempo inteiro")
-
-            time , audio_path = self.file_dict[buoy_id][end+1]
-            taxa_de_amostragem , dados = wavfile.read(audio_path)
-
-            if not taxa :
-                taxa = taxa_de_amostragem
-            elif taxa != taxa_de_amostragem :
-                dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
-
-            delta = end_time - time
-            index = int(delta.total_seconds() * taxa)
-            if index < 0 or index >= len(dados):
-                raise ValueError("Erro de conta no get_data()")
-
-            data_resp.append(dados[:index])
-
-        return taxa , np.concatenate(data_resp)
+        return taxa, data_resp
 
 if __name__ == "__main__":
     data = DataLoader("./Data/RVT/raw_data")
 
-    start_ = datetime.datetime(2024, 1, 19, 13, 41, 0)
-    end_ = datetime.datetime(2024, 1, 19, 13, 42, 0)
+    print("##### teste_5m #####")
+    start_ = datetime.datetime(2024, 1, 19, 13, 45, 0)
+    end_ = datetime.datetime(2024, 1, 19, 13, 50, 0)
+    taxa_ , data_ = data.get_data(5,start_,end_)
+    wavfile.write('./result/teste_5m.wav',taxa_,data_)
 
-    taxa_ , data_ = data.get_data(2,start_,end_)
-
-    wavfile.write('teste.wav',taxa_,data_)
-    
+    print("\n##### artefato1_boia5 #####")
+    start_ = datetime.datetime(2023, 9, 12, 16, 15, 30)
+    end_ = datetime.datetime(2023, 9, 12, 16, 15, 50)
+    taxa_ , data_ = data.get_data(5,start_,end_)
+    wavfile.write('./result/artefato1_boia5.wav',taxa_,data_)
