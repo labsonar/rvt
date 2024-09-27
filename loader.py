@@ -107,10 +107,12 @@ class DataLoader():
             elif taxa != taxa_de_amostragem :
                 dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
 
-            index = abs(start_time.second - time.second) * taxa
+            delta = start_time - time
+            index = int(delta.total_seconds() * taxa)
             if index < 0 or index >= len(dados):
                 raise ValueError("Erro de conta no get_data()")
 
+            print(delta)
             data_resp.insert(0,dados[index:])
 
         if self.file_dict[buoy_id][end][0] < end_time:
@@ -126,7 +128,8 @@ class DataLoader():
             elif taxa != taxa_de_amostragem :
                 dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
 
-            index = abs(end_time.second - time.second) * taxa
+            delta = end_time - time
+            index = int(delta.total_seconds() * taxa)
             if index < 0 or index >= len(dados):
                 raise ValueError("Erro de conta no get_data()")
 
@@ -138,7 +141,7 @@ if __name__ == "__main__":
     data = DataLoader("./Data/RVT/raw_data")
 
     start_ = datetime.datetime(2024, 1, 19, 13, 41, 0)
-    end_ = datetime.datetime(2024, 1, 19, 13, 45, 0)
+    end_ = datetime.datetime(2024, 1, 19, 13, 42, 0)
 
     taxa_ , data_ = data.get_data(2,start_,end_)
 
