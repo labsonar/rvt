@@ -73,16 +73,16 @@ class DataLoader():
         """ Concatenate audios with precision in the desired interval.
 
             Args: 
-                buoy_id (int): Buoy identification 
-                start_time (datetime.datetime): Start time of the desired audio result 
-                end_time (datetime.datetime): End time of the desired audio result
+                buoy_id (int): Buoy identification. 
+                start_time (datetime.datetime): Start time of the desired audio result.
+                end_time (datetime.datetime): End time of the desired audio result.
 
             Raises: 
-                ValueError: Requested date and time out of range
+                ValueError: Requested date and time out of range.
 
             Returns: 
-                int: Sampling rate 
-                ndarray: Audio data
+                int: Sampling rate.
+                ndarray: Audio data.
         """
 
         # print("\tDesired times: ", start_time, " -> ", end_time)
