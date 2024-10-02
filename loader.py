@@ -1,4 +1,4 @@
-''' Dataloader para gerenciar o sistema de audios do RVT '''
+""" Module providing Dataloader to manage RVT audio system. """
 import os
 import datetime
 import typing
@@ -10,7 +10,7 @@ import lps_utils.utils as lps_utils
 from lps_sp.signal import decimate
 
 class DataLoader():
-    ''' Dataloader para gerenciar os audios providos pelas boias '''
+    """ Class representing the RVT audio system. """
 
     def __init__(self, base_path: str) -> None:
         self.file_dict = DataLoader.get_file_dict(base_path)
@@ -23,10 +23,12 @@ class DataLoader():
     @staticmethod
     def get_file_dict(base_path: str) -> \
         typing.Dict[int, typing.List[typing.Tuple[datetime.datetime, str]]]:
-        ''' 
-            Funcao para auxiliar o construtor da classe.
-            Transforma uma pasta de arquivos em um dataframe
-        '''
+        """ Function to retrieve and organize data from a folder.
+
+            Args:
+                base_path (str): Path to the folder.
+        """
+
         file_dict = {}
 
         for file in lps_utils.find_files(base_path):
@@ -65,17 +67,31 @@ class DataLoader():
 
         return file_dict
 
-    def get_data(self, buoy_id: int, start_time: datetime.datetime, end_time: datetime.datetime):
-        '''
-            Funcao para acessar e concatenar dados em um intervalo de tempo para determinada boia
-        '''
+    def get_data(self, buoy_id: int, \
+                start_time: datetime.datetime, end_time: datetime.datetime) -> \
+                typing.Tuple[int, np.ndarray[np.int16]]:
+        """ Concatenate audios with precision in the desired interval.
 
-        print("\tDesired times: ", start_time, " -> ", end_time)
+            Args: 
+                buoy_id (int): Buoy identification 
+                start_time (datetime.datetime): Start time of the desired audio result 
+                end_time (datetime.datetime): End time of the desired audio result
+
+            Raises: 
+                ValueError: Requested date and time out of range
+
+            Returns: 
+                int: Sampling rate 
+                ndarray: Audio data
+        """
+
+        # print("\tDesired times: ", start_time, " -> ", end_time)
 
         data_resp = []
         taxa = None
 
-        #Binary search to find where this date and time should be inserted to keep the list in order
+        # Binary search to find where this date and time
+        # should be inserted to keep the list in order
         start = bisect.bisect_left(self.file_dict[buoy_id], (start_time, ""))
         end = bisect.bisect_left(self.file_dict[buoy_id], (end_time, ""))
 
@@ -86,8 +102,9 @@ class DataLoader():
         # Starting index pointing to the first file with data above the requested start time.
         # Therefore, the request time is part of the previous file
 
-        print("\tIndexes: ", start, " -> ", end)
-        print("\tRecorded files: ", self.file_dict[buoy_id][start][1], " -> ", self.file_dict[buoy_id][end][1])
+        # print("\tIndexes: ", start, " -> ", end)
+        # print("\tRecorded files: ", self.file_dict[buoy_id][start][1], \
+        #       " -> ", self.file_dict[buoy_id][end][1])
 
         for index in range(start,end):
 
@@ -98,13 +115,14 @@ class DataLoader():
             if not taxa :
                 taxa = taxa_de_amostragem
             elif taxa != taxa_de_amostragem :
-                dados = decimate(dados, taxa_de_amostragem/taxa) # revisar isso aqui
+                dados = decimate(dados, taxa_de_amostragem/taxa) # TODO revisar isso aqui
 
             data_resp.append(dados)
 
         data_resp = np.concatenate(data_resp)
 
-        start_overhead = int((start_time - self.file_dict[buoy_id][start][0]).total_seconds() * taxa)
+        delta = start_time - self.file_dict[buoy_id][start][0]
+        start_overhead = int(delta.total_seconds() * taxa)
         data_resp = data_resp[start_overhead:]
 
         desired_n_samples = int((end_time - start_time).total_seconds() * taxa)
@@ -115,19 +133,9 @@ class DataLoader():
 
         data_resp = data_resp[:desired_n_samples]
 
+        print(type(data_resp[0]))
+
         return taxa, data_resp
 
 if __name__ == "__main__":
     data = DataLoader("./Data/RVT/raw_data")
-
-    print("##### teste_5m #####")
-    start_ = datetime.datetime(2024, 1, 19, 13, 45, 0)
-    end_ = datetime.datetime(2024, 1, 19, 13, 50, 0)
-    taxa_ , data_ = data.get_data(5,start_,end_)
-    wavfile.write('./result/teste_5m.wav',taxa_,data_)
-
-    print("\n##### artefato1_boia5 #####")
-    start_ = datetime.datetime(2023, 9, 12, 16, 15, 30)
-    end_ = datetime.datetime(2023, 9, 12, 16, 15, 50)
-    taxa_ , data_ = data.get_data(5,start_,end_)
-    wavfile.write('./result/artefato1_boia5.wav',taxa_,data_)

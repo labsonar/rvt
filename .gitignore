@@ -1,6 +1,12 @@
 #Libraries
 template_library
+
+# Data
 Data/
+
+# Testing audio files
+Result/
+*.wav
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
