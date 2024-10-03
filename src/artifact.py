@@ -7,7 +7,7 @@ import pandas as pd
 class ArtifactLoader():
     """ Class representing RVT Artifact system. """
 
-    def __init__(self, base_path : str):
+    def __init__(self, base_path="Artifacts.csv"):
         self.path = base_path
         self.data = pd.read_csv(base_path)
 
@@ -122,7 +122,7 @@ class ArtifactLoader():
             datetime.datetime: Time when the artifact was detected by the buoy.
             None: Audio of artifact in buoy do not exist.
         """
-        # TODO Posso acessar diretamente o arquivo em que o artefato foi detectado
+        # TODO Posso acessar diretamente o arquivo em que o artefato foi detectado # pylint: disable=fixme
 
         artifact_id = self.find_index(artifact_id)
 
@@ -140,7 +140,4 @@ class ArtifactLoader():
         return time
 
 if __name__ == "__main__":
-    store = ArtifactLoader('Artefatos.csv')
-
-    print(store.artifact_amount("GAE"))
-    # Pylint reclama do todo, oq eu faco?
+    store = ArtifactLoader()

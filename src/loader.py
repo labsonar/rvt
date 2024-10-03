@@ -115,7 +115,7 @@ class DataLoader():
             if not taxa :
                 taxa = taxa_de_amostragem
             elif taxa != taxa_de_amostragem :
-                dados = decimate(dados, taxa_de_amostragem/taxa) # TODO revisar isso aqui
+                dados = decimate(dados, taxa_de_amostragem/taxa) # TODO revisar isso aqui # pylint: disable=fixme
 
             data_resp.append(dados)
 

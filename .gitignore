@@ -2,7 +2,7 @@
 template_library
 
 # Data
-Data/
+data/RVT/
 
 # Testing audio files
 Result/
