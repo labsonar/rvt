@@ -21,15 +21,10 @@ class ArtifactManager():
         return len(self.data)
 
     def __iter__(self):
-        self.index = 0
-        return self
+        return iter(self.data["Artifact ID"].to_list())
 
-    def __next__(self):
-        if self.index < len(self.data):
-            value = Artifact(self.data["Artifact ID"][self.index])
-            self.index += 1
-            return value
-        raise StopIteration
+    def __getitem__(self, artifact_id: int):
+        return self.get_time_all(artifact_id).items()
 
     def id_from_type(self, artifact_type: str) -> typing.List[int]:
         """ Gets all artifacts id's of determined type
@@ -78,27 +73,27 @@ class ArtifactManager():
         # TODO Professor pediu pra mudar aq, mas eu n entendi # pylint: disable=fixme
 
         try:
-            amount = self.data["Tipo de Tiro"].value_counts()[artifact_type]
+            amount = self.data["Shooting Type"].value_counts()[artifact_type]
         except KeyError as err:
             raise KeyError("Artifact type do not exist.") from err
 
         return amount
 
-    def get_time_all(self, artifact_id: int) -> typing.Dict[str, datetime.datetime]:
+    def get_time_all(self, artifact_id: int) -> typing.Dict[int, datetime.datetime]:
         """ Get the detection time of the artifact in all buoys.
 
             Args:
                 artifact_id (int): Identification of the artifact.
 
             Returns:
-                typing.Dict[str, datetime.datetime]: Map with the detection time of each buoy.
+                typing.Dict[int, datetime.datetime]: Map with the detection time of each buoy.
         """
 
         mapa = {}
         for i in range(1,6):
 
             try :
-                mapa[f"Buoy{i}"] = self.get_time(artifact_id,i)
+                mapa[i] = self.get_time(artifact_id,i)
             except ValueError :
                 continue
 
@@ -144,41 +139,12 @@ class ArtifactManager():
 
         return date
 
-class Artifact(ArtifactManager):
-    """ Class representing an artifact. """
-
-    def __init__(self, artifact_id: int):
-        super().__init__()
-
-        # TODO esses atributos sao o suficiente ou eh bom ter mais informacao? # pylint: disable=fixme
-
-        self.iteration = 0
-        self.index = self.find_index(artifact_id)
-        self.id = artifact_id
-        self.type = self.data.iloc[self.index]["Shooting Type"]
-        self.failure = bool(self.data.iloc[self.index]["Shooting Failure"])
-        self.times = self.get_time_all(artifact_id)
-        self.keys = list(self.times.keys())
-
-    def __len__(self):
-        return len(self.times)
-
-    def __iter__(self):
-        self.iteration = 0
-        return self
-
-    def __next__(self):
-        if self.iteration < len(self.times):
-            key = self.keys[self.iteration]
-            value = self.times[key]
-            self.iteration += 1
-            return key , value
-        raise StopIteration
 
 if __name__ == "__main__":
 
-    artifact_manager = ArtifactManager()
+    manager = ArtifactManager()
 
-    for artifact in artifact_manager:
-        for buoy_id_, time in artifact:
-            print(f"[{buoy_id_}: {time}]")
+   for id_artifact in manager:
+        print(f"Artifact: {id_artifact}")
+        for buoy_id_, time in manager[id_artifact]:
+            print(f"\t[{buoy_id_}: {time}] ")
