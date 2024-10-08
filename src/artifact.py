@@ -7,7 +7,7 @@ import pandas as pd
 class ArtifactManager():
     """ Class representing RVT Artifact system. """
 
-    def __init__(self, base_path="data/artifacts.csv"):
+    def __init__(self, base_path="../data/artifacts.csv"):
         self.path = base_path
         self.data = pd.read_csv(base_path)
         self.index = 0

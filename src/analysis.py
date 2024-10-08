@@ -13,7 +13,7 @@ from loader import DataLoader
 class AudioAnalysis:
     def __init__(self, audio, fs, duration, n_samples, buoy_id, audio_id):
         self.audio_file = audio_id
-        self.wave_file = None
+        # self.wave_file = None
         self.audio = audio
         self.fs = fs
         self.duration = duration
@@ -106,11 +106,11 @@ class AudioAnalysis:
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
 
-    def close_audio(self):
-        """Fecha o arquivo de áudio"""
-        if self.wave_file:
-            self.wave_file.close()
-            print(f"Arquivo de áudio {self.audio_file} fechado.")
+    # def close_audio(self):
+    #     """Fecha o arquivo de áudio"""
+    #     if self.wave_file:
+    #         self.wave_file.close()
+    #         print(f"Arquivo de áudio {self.audio_file} fechado.")
 
 def artifact_analysis():
 
@@ -124,13 +124,10 @@ def artifact_analysis():
             end_time = time + timedelta(seconds=2)
 
             duration = (end_time - start_time).total_seconds()
-            
-            # audio_analysis.duration = end_time - start_time
 
             loader = DataLoader("/home/gabriel.lisboa/Workspace/RVT/Data/RVT/raw_data")
             
             fs, audio = loader.get_data(buoy_id, start_time, end_time)
-
             n_samples = int(duration * fs)
 
             audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, buoy_id, time)
@@ -142,17 +139,18 @@ def artifact_analysis():
 
             
 
-if __name__ == "__main__":
-    path_to_file = '/home/gabriel.lisboa/Workspace/RVT/Data/RVT/raw_data/20240119/boia1'
-    audio_file = '19_10_59_00015.wav'
-    audio_id = audio_file.split('.')[0]
-    audio = os.path.join(path_to_file, audio_file)
-    audio_loader = AudioAnalysis(audio, '1', audio_id)
-    audio_loader.load_audio()
+# if __name__ == "__main__":
 
-    audio_loader.plot(f'{audio_id}.png')
-    audio_loader.psd(f'{audio_id}_psd.png')
-    audio_loader.fft(f'{audio_id}_fft.png')
-    audio_loader.lofar(f'{audio_id}_lofar.png')
+#     path_to_file = '/home/gabriel.lisboa/Workspace/RVT/Data/RVT/raw_data/20240119/boia1'
+#     audio_file = '19_10_59_00015.wav'
+#     audio_id = audio_file.split('.')[0]
+#     audio = os.path.join(path_to_file, audio_file)
+#     audio_loader = AudioAnalysis(audio, '1', audio_id)
+#     audio_loader.load_audio()
 
-    audio_loader.close_audio()
+#     audio_loader.plot(f'{audio_id}.png')
+#     audio_loader.psd(f'{audio_id}_psd.png')
+#     audio_loader.fft(f'{audio_id}_fft.png')
+#     audio_loader.lofar(f'{audio_id}_lofar.png')
+
+#     audio_loader.close_audio()
