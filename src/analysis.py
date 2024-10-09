@@ -11,41 +11,35 @@ from artifact import ArtifactManager
 from loader import DataLoader
 
 class AudioAnalysis:
+    """ Class for audio analysis operations.
+
+    This class provides methods for plotting waveforms, computing Power Spectral Density (PSD), 
+    performing Fast Fourier Transform (FFT), and generating LOFAR analysis plots from an audio signal.
+    
+    Attributes:
+        audio (ndarray): The audio data loaded for analysis.
+        fs (int): The sampling frequency of the audio data.
+        duration (float): Duration of the audio signal.
+        n_samples (int): Number of samples in the audio signal.
+        data_path (str): Path to save analysis results.
+        time (datetime): Time associated with the audio file for reference.
+    """
+
     def __init__(self, audio, fs, duration, n_samples, data_path, time):
         self.audio_file = time
-        # self.wave_file = None
         self.audio = audio
         self.fs = fs
         self.duration = duration
         self.n_samples = n_samples
         self.time_axis = None
         self.data_path = data_path
-        # self.data_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{audio_id}'
-
-    # def load_audio(self):
-    #     """Carrega o arquivo .wav e armazena os dados do áudio"""
-    #     try:
-    #         self.wave_file = wave.open(self.audio_file, 'rb')
-    #         print(f"Arquivo de áudio {self.audio_file} carregado com sucesso.")
-    #         self.extract_signal()
-    #     except wave.Error as e:
-    #         print(f"Erro ao carregar o arquivo de áudio: {e}")
-
-    # def extract_signal(self):
-    #     """Extrai os dados do sinal do áudio"""
-    #     if self.wave_file:
-    #         self.fs = self.wave_file.getframerate()
-    #         num_frames = self.wave_file.getnframes()
-
-    #         audio_frames = self.wave_file.readframes(num_frames)
-
-    #         self.audio = np.frombuffer(audio_frames, dtype=np.int16)
-
-    #         duration = num_frames / float(self.fs)
-    #         self.time_axis = np.linspace(0, duration, num=num_frames)
 
     def plot(self, output_filename):
-        """Salva o plot do áudio no tempo como um arquivo .png"""
+        """ Generates and saves the waveform plot of the audio.
+
+        Args:
+            output_filename (str): The filename for saving the plot.
+        """
 
         self.time_axis = np.linspace(0, self.duration, num=self.n_samples)
 
@@ -59,11 +53,16 @@ class AudioAnalysis:
             os.makedirs(self.data_path, exist_ok=True)
             plt.savefig(f"{self.data_path}/{output_filename}")
             plt.close()
-            print(f"Gráfico salvo como {output_filename}")
+            print(f"Audio Waveform saved as {output_filename}")
         else:
             print("Nenhum áudio foi carregado ou extraído.")
         
     def psd(self, output_filename):
+        """ Generates and saves the Power Spectral Density (PSD) plot.
+
+        Args:
+            output_filename (str): The filename for saving the plot.
+        """
         
         psd_freq, psd_result = lps_bb.psd(signal=self.audio, fs=self.fs, window_size=4096, overlap=0.5)
 
@@ -76,8 +75,16 @@ class AudioAnalysis:
         os.makedirs(self.data_path, exist_ok=True)
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
+        print(f"PSD saved as {output_filename}")
+
 
     def fft(self, output_filename):
+        """ Generates and saves the Fast Fourier Transform (FFT) plot.
+
+        Args:
+            output_filename (str): The filename for saving the plot.
+        """
+
         fft_result = np.fft.fft(self.audio)
         fft_freq = np.fft.fftfreq(len(self.audio), 1/self.fs)
 
@@ -92,8 +99,14 @@ class AudioAnalysis:
         os.makedirs(self.data_path, exist_ok=True)
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
+        print(f"FFT saved as {output_filename}")
 
     def lofar(self, output_filename):
+        """ Generates and saves LOFAR analysis plot.
+
+        Args:
+            output_filename (str): The filename for saving the plot.
+        """
 
         power, freq, time = lps_analysis.SpectralAnalysis.lofar(self.audio, self.fs)
 
@@ -106,14 +119,19 @@ class AudioAnalysis:
         os.makedirs(self.data_path, exist_ok=True)
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
+        print(f"LOFARgram saved as {output_filename}")
 
-    # def close_audio(self):
-    #     """Fecha o arquivo de áudio"""
-    #     if self.wave_file:
-    #         self.wave_file.close()
-    #         print(f"Arquivo de áudio {self.audio_file} fechado.")
 
 def artifact_analysis():
+    """ Analyzes audio data from different artifact types (types of munition) and saves the results.
+
+    This function processes audio associated with different artifacts by extracting
+    relevant time segments (time of impact and background noise), performing analysis 
+    (waveform, PSD, FFT, and LOFAR), and saving the resulting plots.
+
+    Raises:
+        ValueError: If the artifact type does not match any of the expected types.
+    """
 
     artifact_type = ''
     manager = ArtifactManager(base_path="../data/artifacts.csv")
@@ -165,19 +183,6 @@ def artifact_analysis():
             bkg_analysis.lofar(f'{time}_lofar_bkg.png')
 
             
-artifact_analysis()
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     path_to_file = '/home/gabriel.lisboa/Workspace/RVT/Data/RVT/raw_data/20240119/boia1'
-#     audio_file = '19_10_59_00015.wav'
-#     audio_id = audio_file.split('.')[0]
-#     audio = os.path.join(path_to_file, audio_file)
-#     audio_loader = AudioAnalysis(audio, '1', audio_id)
-#     audio_loader.load_audio()
-
-#     audio_loader.plot(f'{audio_id}.png')
-#     audio_loader.psd(f'{audio_id}_psd.png')
-#     audio_loader.fft(f'{audio_id}_fft.png')
-#     audio_loader.lofar(f'{audio_id}_lofar.png')
-
-#     audio_loader.close_audio()
+    artifact_analysis()
