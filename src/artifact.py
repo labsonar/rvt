@@ -144,7 +144,7 @@ if __name__ == "__main__":
 
     manager = ArtifactManager()
 
-   for id_artifact in manager:
+    for id_artifact in manager:
         print(f"Artifact: {id_artifact}")
         for buoy_id_, time in manager[id_artifact]:
             print(f"\t[{buoy_id_}: {time}] ")

@@ -11,15 +11,16 @@ from artifact import ArtifactManager
 from loader import DataLoader
 
 class AudioAnalysis:
-    def __init__(self, audio, fs, duration, n_samples, buoy_id, audio_id):
-        self.audio_file = audio_id
+    def __init__(self, audio, fs, duration, n_samples, data_path, time):
+        self.audio_file = time
         # self.wave_file = None
         self.audio = audio
         self.fs = fs
         self.duration = duration
         self.n_samples = n_samples
         self.time_axis = None
-        self.data_path = f'../data/Analysis/Boia{buoy_id}/{audio_id}'
+        self.data_path = data_path
+        # self.data_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{audio_id}'
 
     # def load_audio(self):
     #     """Carrega o arquivo .wav e armazena os dados do áudio"""
@@ -114,28 +115,54 @@ class AudioAnalysis:
 
 def artifact_analysis():
 
+    artifact_type = ''
     manager = ArtifactManager(base_path="../data/artifacts.csv")
 
     for id_artifact in manager:
- 
+        
+        if id_artifact in manager.id_from_type('EX-SUP'):
+            artifact_type = 'EX-SUP'
+        elif id_artifact in manager.id_from_type('HE3m'):
+            artifact_type = 'HE3m'
+        elif id_artifact in manager.id_from_type('GAE'):
+            artifact_type = 'GAE'
+        else:
+            raise ValueError(f"Artifact #{id_artifact} is not of any expected type")
+
         for buoy_id, time in manager[id_artifact]:
 
             start_time = time - timedelta(seconds=10)
+            bkg_end = time - timedelta(seconds=2)
             end_time = time + timedelta(seconds=2)
 
-            duration = (end_time - start_time).total_seconds()
+            duration = (end_time - bkg_end).total_seconds()
 
             loader = DataLoader("../../Data/RVT/raw_data")
             
-            fs, audio = loader.get_data(buoy_id, start_time, end_time)
+            fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
             n_samples = int(duration * fs)
 
-            audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, buoy_id, time)
+            audio_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
+            bkg_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+
+            audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, audio_path, time)
 
             audio_analysis.plot(f'{time}.png')
             audio_analysis.psd(f'{time}_psd.png')
             audio_analysis.fft(f'{time}_fft.png')
             audio_analysis.lofar(f'{time}_lofar.png')
+
+            bkg_duration = (bkg_end - start_time).total_seconds()
+
+            bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
+            bkg_samples = int(bkg_duration * bkg_fs)
+
+            bkg_analysis = AudioAnalysis(bkg_audio, bkg_fs, bkg_duration, bkg_samples, bkg_path, time)
+
+            bkg_analysis.plot(f'{time}_bkg.png')
+            bkg_analysis.psd(f'{time}_psd_bkg.png')
+            bkg_analysis.fft(f'{time}_fft_bkg.png')
+            bkg_analysis.lofar(f'{time}_lofar_bkg.png')
 
             
 artifact_analysis()
