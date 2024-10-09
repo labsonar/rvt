@@ -19,7 +19,7 @@ class AudioAnalysis:
         self.duration = duration
         self.n_samples = n_samples
         self.time_axis = None
-        self.data_path = f'/home/gabriel.lisboa/Workspace/RVT/rvt/data/Analysis/Boia{buoy_id}/{audio_id}'
+        self.data_path = f'../data/Analysis/Boia{buoy_id}/{audio_id}'
 
     # def load_audio(self):
     #     """Carrega o arquivo .wav e armazena os dados do áudio"""
@@ -114,18 +114,18 @@ class AudioAnalysis:
 
 def artifact_analysis():
 
-    artifact_manager = ArtifactManager(base_path="/home/gabriel.lisboa/Workspace/RVT/rvt/data/artifacts.csv")
+    manager = ArtifactManager(base_path="../data/artifacts.csv")
 
-    for artifact in artifact_manager:
-        
-        for buoy_id, time in artifact:
+    for id_artifact in manager:
+ 
+        for buoy_id, time in manager[id_artifact]:
 
             start_time = time - timedelta(seconds=10)
             end_time = time + timedelta(seconds=2)
 
             duration = (end_time - start_time).total_seconds()
 
-            loader = DataLoader("/home/gabriel.lisboa/Workspace/RVT/Data/RVT/raw_data")
+            loader = DataLoader("../../Data/RVT/raw_data")
             
             fs, audio = loader.get_data(buoy_id, start_time, end_time)
             n_samples = int(duration * fs)
@@ -133,12 +133,12 @@ def artifact_analysis():
             audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, buoy_id, time)
 
             audio_analysis.plot(f'{time}.png')
-            audio_analysis.psd(f'{time}.png')
-            audio_analysis.fft(f'{time}.png')
-            audio_analysis.lofar(f'{time}.png')
+            audio_analysis.psd(f'{time}_psd.png')
+            audio_analysis.fft(f'{time}_fft.png')
+            audio_analysis.lofar(f'{time}_lofar.png')
 
             
-
+artifact_analysis()
 # if __name__ == "__main__":
 
 #     path_to_file = '/home/gabriel.lisboa/Workspace/RVT/Data/RVT/raw_data/20240119/boia1'
