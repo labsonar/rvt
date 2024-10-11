@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 # import lps_sp.signal as lps_signal
 import lps_sp.acoustical.analysis as lps_analysis
 import lps_sp.acoustical.broadband as lps_bb
+import lps_sp.signal as lps_signal
 from artifact import ArtifactManager
 from loader import DataLoader
 
@@ -88,9 +89,12 @@ class AudioAnalysis:
         fft_result = np.fft.fft(self.audio)
         fft_freq = np.fft.fftfreq(len(self.audio), 1/self.fs)
 
+        magnitude = np.abs(fft_result)[:len(fft_result)//2]
+        magnitude[magnitude == 0] = 1e-10
+
         plt.figure()
         plt.plot(fft_freq[:len(fft_result)//2], 
-                 20*np.log10(np.abs(fft_result)[:len(fft_result)//2]))
+                 20*np.log10(magnitude))
         # plt.plot(fft_freq, np.abs(fft_result))
         plt.title(f"FFT - {self.audio_file}")
         plt.xlabel('Frequency [Hz]')
@@ -111,7 +115,7 @@ class AudioAnalysis:
         power, freq, time = lps_analysis.SpectralAnalysis.lofar(self.audio, self.fs)
 
         plt.figure()
-        plt.pcolormesh(time, freq, 10 * np.log10(power), shading='gouraud')
+        plt.pcolormesh(time, freq, power, shading='gouraud')
         plt.title(f"LOFAR - {self.audio_file}")
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [s]')
@@ -119,7 +123,121 @@ class AudioAnalysis:
         os.makedirs(self.data_path, exist_ok=True)
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
-        print(f"LOFARgram saved as {output_filename}")
+        print(f"LOFARgram saved as {output_filename}") 
+
+def plot_all_buoy(manager, loader, artifact_type, plot_type, signal_type):
+    """ Plots the PSD (Power Spectral Density) for all artifacts of a given type and buoy.
+
+    Args:
+        manager (ArtifactManager): Instance of the ArtifactManager class.
+        loader (DataLoader): Instance of the DataLoader class.
+        artifact_type (str): Type of the artifact to plot (e.g., 'EX-SUP', 'HE3m').
+    """
+
+    buoy_data = {}
+
+    for id_artifact in manager.id_from_type(artifact_type):
+        for buoy_id, time in manager[id_artifact]:
+
+            if signal_type == 'artifact':
+                start_time = time - timedelta(seconds=0.05)
+                end_time = time + timedelta(seconds=0.25)
+            elif signal_type == 'background':
+                start_time = time - timedelta(seconds=10)
+                end_time = time - timedelta(seconds=2)
+
+            fs, audio = loader.get_data(buoy_id, start_time, end_time)
+            
+            if buoy_id not in buoy_data:
+                buoy_data[buoy_id] = []
+            
+            buoy_data[buoy_id].append(audio)
+
+    for buoy_id, audio_list in buoy_data.items():
+        plt.figure(figsize=(12, 6))
+        if signal_type == 'artifact':
+            plt.title(f"Artifact {plot_type} for {artifact_type} - Boia {buoy_id}")
+        elif signal_type == 'background':
+            plt.title(f"Background {plot_type} for {artifact_type} - Boia {buoy_id}")
+        plt.xlabel("Frequency (Hz)")
+        if plot_type == 'psd':
+            plt.ylabel("PSD (W/Hz)")
+        elif plot_type == 'fft':
+            plt.ylabel("Amplitude (dB)")
+        plt.grid()
+
+        for i, audio in enumerate(audio_list):
+
+            if plot_type == 'psd':
+                freq, result = lps_bb.psd(signal=audio, fs=fs, window_size=4096, overlap=0.5)
+            elif plot_type == 'fft':
+                fft_result = np.fft.fft(audio)
+                fft_freq = np.fft.fftfreq(len(audio), 1/fs)
+                magnitude = np.abs(fft_result)[:len(fft_result)//2]
+                magnitude[magnitude == 0] = 1e-10
+                result = 20 * np.log10(magnitude)
+                freq = fft_freq[:len(fft_result)//2]
+
+            normalization = lps_signal.Normalization.MIN_MAX_ZERO_CENTERED
+            result = normalization(result)
+
+            plt.plot(freq, result, label=f"{signal_type} {i+1}")
+
+        plt.legend()
+        os.makedirs(f"../data/Analysis/{artifact_type}/Boia{buoy_id}", exist_ok=True)
+        plt.savefig(f"../data/Analysis/{artifact_type}/Boia{buoy_id}/{plot_type}_all_{signal_type}s.png")
+        plt.close()
+        print(f"{plot_type} of all artifacts for {artifact_type} for Boia {buoy_id} plotted and saved as {plot_type}_all_{signal_type}s.png")
+
+def plot_artifact_bkg():
+    '''Plot artifact and background'''
+
+    loader = DataLoader("../../Data/RVT/raw_data")
+    manager = ArtifactManager(base_path="../data/artifacts.csv")
+
+    for artifact_type in ['EX-SUP', 'HE3m', 'GAE']:
+
+        for id_artifact in manager.id_from_type(artifact_type):
+        
+            for buoy_id, time in manager[id_artifact]:
+
+                start_time = time - timedelta(seconds=10)
+                bkg_end = time - timedelta(seconds=2)
+                end_time = time + timedelta(seconds=2)
+
+                duration = (end_time - bkg_end).total_seconds()
+                
+                fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
+                n_samples = int(duration * fs)
+
+                audio_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
+                bkg_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+
+                bkg_duration = (bkg_end - start_time).total_seconds()
+
+                bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
+                bkg_samples = int(bkg_duration * bkg_fs)
+
+                psd_freq, psd_result = lps_bb.psd(signal=audio, fs=fs, window_size=4096, overlap=0.5)
+                psd_bkg_freq, psd_bkg_result = lps_bb.psd(signal=bkg_audio, fs=bkg_fs, window_size=4096, overlap=0.5)
+
+                data_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}'
+
+                output_filename = 'artifactxbkg_psd.png'
+
+                plt.figure(figsize=(12, 6))
+                plt.plot(psd_freq, psd_result, label='Artifact')
+                plt.plot(psd_bkg_freq, psd_bkg_result, label='Background')
+                plt.title(f"PSD - Artifact x Background")
+                plt.xlabel('Frequency (Hz)')
+                plt.ylabel('Power [W/Hz]')
+                plt.grid()
+                plt.legend()
+                os.makedirs(data_path, exist_ok=True)
+                plt.savefig(f"{data_path}/{output_filename}")
+                plt.close()
+                print(f"PSD saved as {output_filename}")
+
 
 
 def artifact_analysis():
@@ -133,56 +251,53 @@ def artifact_analysis():
         ValueError: If the artifact type does not match any of the expected types.
     """
 
-    artifact_type = ''
+    loader = DataLoader("../../Data/RVT/raw_data")
     manager = ArtifactManager(base_path="../data/artifacts.csv")
 
-    for id_artifact in manager:
-        
-        if id_artifact in manager.id_from_type('EX-SUP'):
-            artifact_type = 'EX-SUP'
-        elif id_artifact in manager.id_from_type('HE3m'):
-            artifact_type = 'HE3m'
-        elif id_artifact in manager.id_from_type('GAE'):
-            artifact_type = 'GAE'
-        else:
-            raise ValueError(f"Artifact #{id_artifact} is not of any expected type")
+    for artifact_type in ['EX-SUP', 'HE3m', 'GAE']:
 
-        for buoy_id, time in manager[id_artifact]:
+        plot_all_buoy(manager, loader, artifact_type, 'psd', 'artifact')
+        plot_all_buoy(manager, loader, artifact_type, 'psd', 'background')
+        plot_all_buoy(manager, loader, artifact_type, 'fft', 'artifact')
+        plot_all_buoy(manager, loader, artifact_type, 'fft', 'background')
 
-            start_time = time - timedelta(seconds=10)
-            bkg_end = time - timedelta(seconds=2)
-            end_time = time + timedelta(seconds=2)
+        for id_artifact in manager.id_from_type(artifact_type):
 
-            duration = (end_time - bkg_end).total_seconds()
+            for buoy_id, time in manager[id_artifact]:
 
-            loader = DataLoader("../../Data/RVT/raw_data")
-            
-            fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
-            n_samples = int(duration * fs)
+                start_time = time - timedelta(seconds=10)
+                bkg_end = time - timedelta(seconds=2)
+                end_time = time + timedelta(seconds=2)
 
-            audio_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
-            bkg_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+                duration = (end_time - bkg_end).total_seconds()
+                
+                fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
+                n_samples = int(duration * fs)
 
-            audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, audio_path, time)
+                audio_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
+                bkg_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
 
-            audio_analysis.plot(f'{time}.png')
-            audio_analysis.psd(f'{time}_psd.png')
-            audio_analysis.fft(f'{time}_fft.png')
-            audio_analysis.lofar(f'{time}_lofar.png')
+                audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, audio_path, time)
 
-            bkg_duration = (bkg_end - start_time).total_seconds()
+                audio_analysis.plot(f'{time}.png')
+                audio_analysis.psd(f'{time}_psd.png')
+                audio_analysis.fft(f'{time}_fft.png')
+                audio_analysis.lofar(f'{time}_lofar.png')
 
-            bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
-            bkg_samples = int(bkg_duration * bkg_fs)
+                bkg_duration = (bkg_end - start_time).total_seconds()
 
-            bkg_analysis = AudioAnalysis(bkg_audio, bkg_fs, bkg_duration, bkg_samples, bkg_path, time)
+                bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
+                bkg_samples = int(bkg_duration * bkg_fs)
 
-            bkg_analysis.plot(f'{time}_bkg.png')
-            bkg_analysis.psd(f'{time}_psd_bkg.png')
-            bkg_analysis.fft(f'{time}_fft_bkg.png')
-            bkg_analysis.lofar(f'{time}_lofar_bkg.png')
+                bkg_analysis = AudioAnalysis(bkg_audio, bkg_fs, bkg_duration, bkg_samples, bkg_path, time)
+
+                bkg_analysis.plot(f'{time}_bkg.png')
+                bkg_analysis.psd(f'{time}_psd_bkg.png')
+                bkg_analysis.fft(f'{time}_fft_bkg.png')
+                bkg_analysis.lofar(f'{time}_lofar_bkg.png')
 
             
 if __name__ == "__main__":
 
     artifact_analysis()
+    plot_artifact_bkg()
