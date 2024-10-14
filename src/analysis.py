@@ -14,8 +14,10 @@ from loader import DataLoader
 class AudioAnalysis:
     """ Class for audio analysis operations.
 
-    This class provides methods for plotting waveforms, computing Power Spectral Density (PSD), 
-    performing Fast Fourier Transform (FFT), and generating LOFAR analysis plots from an audio signal.
+    This class provides methods for plotting waveforms,
+    computing Power Spectral Density (PSD), 
+    performing Fast Fourier Transform (FFT),
+    and generating LOFAR analysis plots from an audio signal.
     
     Attributes:
         audio (ndarray): The audio data loaded for analysis.
@@ -26,6 +28,7 @@ class AudioAnalysis:
         time (datetime): Time associated with the audio file for reference.
     """
 
+    # TODO Revisar se todos esses inputs sao realmente necessarios, pylint ta reclamando # pylint: disable=fixme
     def __init__(self, audio, fs, duration, n_samples, data_path, time):
         self.audio_file = time
         self.audio = audio
@@ -57,7 +60,7 @@ class AudioAnalysis:
             print(f"Audio Waveform saved as {output_filename}")
         else:
             print("Nenhum áudio foi carregado ou extraído.")
-        
+
     def psd(self, output_filename):
         """ Generates and saves the Power Spectral Density (PSD) plot.
 
@@ -77,7 +80,6 @@ class AudioAnalysis:
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
         print(f"PSD saved as {output_filename}")
-
 
     def fft(self, output_filename):
         """ Generates and saves the Fast Fourier Transform (FFT) plot.
@@ -125,7 +127,9 @@ class AudioAnalysis:
         plt.close()
         print(f"LOFARgram saved as {output_filename}") 
 
-def plot_all_buoy(manager, loader, artifact_type, plot_type, signal_type):
+# TODO Pylint ta reclamando da quantidade de variaveis e ifs dessas funcoes, revisar isso aq depois #pylint: disable=fixme
+def plot_all_buoy(manager: ArtifactManager, loader: DataLoader, \
+                  artifact_type: str, plot_type: str, signal_type: str):
     """ Plots the PSD (Power Spectral Density) for all artifacts of a given type and buoy.
 
     Args:
@@ -147,10 +151,10 @@ def plot_all_buoy(manager, loader, artifact_type, plot_type, signal_type):
                 end_time = time - timedelta(seconds=2)
 
             fs, audio = loader.get_data(buoy_id, start_time, end_time)
-            
+
             if buoy_id not in buoy_data:
                 buoy_data[buoy_id] = []
-            
+
             buoy_data[buoy_id].append(audio)
 
     for buoy_id, audio_list in buoy_data.items():
@@ -184,21 +188,21 @@ def plot_all_buoy(manager, loader, artifact_type, plot_type, signal_type):
             plt.plot(freq, result, label=f"{signal_type} {i+1}")
 
         plt.legend()
-        os.makedirs(f"../data/Analysis/{artifact_type}/Boia{buoy_id}", exist_ok=True)
-        plt.savefig(f"../data/Analysis/{artifact_type}/Boia{buoy_id}/{plot_type}_all_{signal_type}s.png")
+        os.makedirs(f"data/Analysis/{artifact_type}/Boia{buoy_id}", exist_ok=True)
+        plt.savefig(f"data/Analysis/{artifact_type}/Boia{buoy_id}/{plot_type}_all_{signal_type}s.png")
         plt.close()
         print(f"{plot_type} of all artifacts for {artifact_type} for Boia {buoy_id} plotted and saved as {plot_type}_all_{signal_type}s.png")
 
 def plot_artifact_bkg():
     '''Plot artifact and background'''
 
-    loader = DataLoader("../../Data/RVT/raw_data")
-    manager = ArtifactManager(base_path="../data/artifacts.csv")
+    loader = DataLoader()
+    manager = ArtifactManager()
 
     for artifact_type in ['EX-SUP', 'HE3m', 'GAE']:
 
         for id_artifact in manager.id_from_type(artifact_type):
-        
+
             for buoy_id, time in manager[id_artifact]:
 
                 start_time = time - timedelta(seconds=10)
@@ -206,29 +210,31 @@ def plot_artifact_bkg():
                 end_time = time + timedelta(seconds=2)
 
                 duration = (end_time - bkg_end).total_seconds()
-                
+
                 fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
                 n_samples = int(duration * fs)
 
-                audio_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
-                bkg_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+                audio_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
+                bkg_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
 
                 bkg_duration = (bkg_end - start_time).total_seconds()
 
                 bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
                 bkg_samples = int(bkg_duration * bkg_fs)
 
-                psd_freq, psd_result = lps_bb.psd(signal=audio, fs=fs, window_size=4096, overlap=0.5)
-                psd_bkg_freq, psd_bkg_result = lps_bb.psd(signal=bkg_audio, fs=bkg_fs, window_size=4096, overlap=0.5)
+                psd_freq, psd_result = lps_bb.psd(signal=audio, fs=fs,\
+                                                window_size=4096, overlap=0.5)
+                psd_bkg_freq, psd_bkg_result = lps_bb.psd(signal=bkg_audio, fs=bkg_fs,\
+                                                            window_size=4096, overlap=0.5)
 
-                data_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}'
+                data_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}'
 
                 output_filename = 'artifactxbkg_psd.png'
 
                 plt.figure(figsize=(12, 6))
                 plt.plot(psd_freq, psd_result, label='Artifact')
                 plt.plot(psd_bkg_freq, psd_bkg_result, label='Background')
-                plt.title(f"PSD - Artifact x Background")
+                plt.title("PSD - Artifact x Background")
                 plt.xlabel('Frequency (Hz)')
                 plt.ylabel('Power [W/Hz]')
                 plt.grid()
@@ -237,8 +243,6 @@ def plot_artifact_bkg():
                 plt.savefig(f"{data_path}/{output_filename}")
                 plt.close()
                 print(f"PSD saved as {output_filename}")
-
-
 
 def artifact_analysis():
     """ Analyzes audio data from different artifact types (types of munition) and saves the results.
@@ -251,8 +255,8 @@ def artifact_analysis():
         ValueError: If the artifact type does not match any of the expected types.
     """
 
-    loader = DataLoader("../../Data/RVT/raw_data")
-    manager = ArtifactManager(base_path="../data/artifacts.csv")
+    loader = DataLoader()
+    manager = ArtifactManager()
 
     for artifact_type in ['EX-SUP', 'HE3m', 'GAE']:
 
@@ -270,12 +274,12 @@ def artifact_analysis():
                 end_time = time + timedelta(seconds=2)
 
                 duration = (end_time - bkg_end).total_seconds()
-                
+
                 fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
                 n_samples = int(duration * fs)
 
-                audio_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
-                bkg_path = f'../data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+                audio_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
+                bkg_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
 
                 audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, audio_path, time)
 
@@ -289,14 +293,14 @@ def artifact_analysis():
                 bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
                 bkg_samples = int(bkg_duration * bkg_fs)
 
-                bkg_analysis = AudioAnalysis(bkg_audio, bkg_fs, bkg_duration, bkg_samples, bkg_path, time)
+                bkg_analysis = AudioAnalysis(bkg_audio, bkg_fs, bkg_duration, \
+                                             bkg_samples, bkg_path, time)
 
                 bkg_analysis.plot(f'{time}_bkg.png')
                 bkg_analysis.psd(f'{time}_psd_bkg.png')
                 bkg_analysis.fft(f'{time}_fft_bkg.png')
                 bkg_analysis.lofar(f'{time}_lofar_bkg.png')
 
-            
 if __name__ == "__main__":
 
     artifact_analysis()

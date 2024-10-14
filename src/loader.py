@@ -12,7 +12,7 @@ from lps_sp.signal import decimate
 class DataLoader():
     """ Class representing the RVT audio system. """
 
-    def __init__(self, base_path: str) -> None:
+    def __init__(self, base_path="data/RVT/raw_data") -> None:
         self.file_dict = DataLoader.get_file_dict(base_path)
 
         # for buoy_id, file_list in self.file_dict.items():
@@ -69,7 +69,7 @@ class DataLoader():
 
     def get_data(self, buoy_id: int, \
                 start_time: datetime.datetime, end_time: datetime.datetime) -> \
-                typing.Tuple[int, np.ndarray[np.int16]]:
+                typing.Tuple[int, np.ndarray]:
         """ Concatenate audios with precision in the desired interval.
 
             Args: 
@@ -133,9 +133,7 @@ class DataLoader():
 
         data_resp = data_resp[:desired_n_samples]
 
-        print(type(data_resp[0]))
-
         return taxa, data_resp
 
 if __name__ == "__main__":
-    data = DataLoader("./Data/RVT/raw_data")
+    data = DataLoader()

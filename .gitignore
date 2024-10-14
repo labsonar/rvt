@@ -3,6 +3,7 @@ template_library
 
 # Data
 data/RVT/
+data/Analysis/
 
 # Testing audio files
 Result/
