@@ -1,5 +1,6 @@
 import wave
 import os
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
@@ -188,12 +189,12 @@ def plot_all_buoy(manager: ArtifactManager, loader: DataLoader, \
             plt.plot(freq, result, label=f"{signal_type} {i+1}")
 
         plt.legend()
-        os.makedirs(f"data/Analysis/{artifact_type}/Boia{buoy_id}", exist_ok=True)
-        plt.savefig(f"data/Analysis/{artifact_type}/Boia{buoy_id}/{plot_type}_all_{signal_type}s.png")
+        os.makedirs(f"data/Analysis/{artifact_type}/all/Boia{buoy_id}", exist_ok=True)
+        plt.savefig(f"data/Analysis/{artifact_type}/all/Boia{buoy_id}/{plot_type}_all_{signal_type}s.png")
         plt.close()
         print(f"{plot_type} of all artifacts for {artifact_type} for Boia {buoy_id} plotted and saved as {plot_type}_all_{signal_type}s.png")
 
-def plot_artifact_bkg():
+def plot_artifact_bkg(start_shift: int, bkg_shift: int, end_shift: int):
     '''Plot artifact and background'''
 
     loader = DataLoader()
@@ -205,9 +206,9 @@ def plot_artifact_bkg():
 
             for buoy_id, time in manager[id_artifact]:
 
-                start_time = time - timedelta(seconds=10)
-                bkg_end = time - timedelta(seconds=2)
-                end_time = time + timedelta(seconds=2)
+                start_time = time - timedelta(seconds=start_shift)
+                bkg_end = time - timedelta(seconds=bkg_shift)
+                end_time = time + timedelta(seconds=end_shift)
 
                 duration = (end_time - bkg_end).total_seconds()
 
@@ -227,7 +228,7 @@ def plot_artifact_bkg():
                 psd_bkg_freq, psd_bkg_result = lps_bb.psd(signal=bkg_audio, fs=bkg_fs,\
                                                             window_size=4096, overlap=0.5)
 
-                data_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}'
+                data_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}'
 
                 output_filename = 'artifactxbkg_psd.png'
 
@@ -244,7 +245,7 @@ def plot_artifact_bkg():
                 plt.close()
                 print(f"PSD saved as {output_filename}")
 
-def artifact_analysis():
+def artifact_analysis(start_shift: int, bkg_shift: int, end_shift: int):
     """ Analyzes audio data from different artifact types (types of munition) and saves the results.
 
     This function processes audio associated with different artifacts by extracting
@@ -269,39 +270,41 @@ def artifact_analysis():
 
             for buoy_id, time in manager[id_artifact]:
 
-                start_time = time - timedelta(seconds=10)
-                bkg_end = time - timedelta(seconds=2)
-                end_time = time + timedelta(seconds=2)
+                start_time = time - timedelta(seconds=start_shift)
+                bkg_end = time - timedelta(seconds=bkg_shift)
+                end_time = time + timedelta(seconds=end_shift)
 
-                duration = (end_time - bkg_end).total_seconds()
+                artifact_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}/Artifact'
+                simple_plots(loader,buoy_id,bkg_end,end_time,artifact_path,time,"")
 
-                fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
-                n_samples = int(duration * fs)
+                bkg_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}/Background'
+                simple_plots(loader,buoy_id,start_time,bkg_end,bkg_path,time,"bkg")
 
-                audio_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
-                bkg_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+                both_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}/Both'
+                simple_plots(loader,buoy_id,start_time,end_time,both_path,time,"")
 
-                audio_analysis = AudioAnalysis(audio, fs, duration, n_samples, audio_path, time)
+def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetime, path: str, time: datetime, title: str) -> None:
+    duration = (end - start).total_seconds()
 
-                audio_analysis.plot(f'{time}.png')
-                audio_analysis.psd(f'{time}_psd.png')
-                audio_analysis.fft(f'{time}_fft.png')
-                audio_analysis.lofar(f'{time}_lofar.png')
+    fs, audio = loader.get_data(buoy_id, start, end)
+    samples = int(duration * fs)
 
-                bkg_duration = (bkg_end - start_time).total_seconds()
+    analysis = AudioAnalysis(audio, fs, duration, \
+                                    samples, path, time)
 
-                bkg_fs, bkg_audio = loader.get_data(buoy_id, start_time, bkg_end)
-                bkg_samples = int(bkg_duration * bkg_fs)
-
-                bkg_analysis = AudioAnalysis(bkg_audio, bkg_fs, bkg_duration, \
-                                             bkg_samples, bkg_path, time)
-
-                bkg_analysis.plot(f'{time}_bkg.png')
-                bkg_analysis.psd(f'{time}_psd_bkg.png')
-                bkg_analysis.fft(f'{time}_fft_bkg.png')
-                bkg_analysis.lofar(f'{time}_lofar_bkg.png')
+    analysis.plot(f'{time}_{title}.png')
+    analysis.psd(f'{time}_psd_{title}.png')
+    analysis.fft(f'{time}_fft_{title}.png')
+    analysis.lofar(f'{time}_lofar_{title}.png')
 
 if __name__ == "__main__":
 
-    artifact_analysis()
-    plot_artifact_bkg()
+    shutil.rmtree("data/Analysis")
+    os.mkdir("data/Analysis")
+
+    START_SHIFT = 2.5
+    BKG_SHIFT = 0
+    END_SHIFT = 2.5
+
+    artifact_analysis(START_SHIFT, BKG_SHIFT, END_SHIFT)
+    plot_artifact_bkg(START_SHIFT, BKG_SHIFT, END_SHIFT)
