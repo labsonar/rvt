@@ -3,6 +3,7 @@ import os
 import shutil
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.io
 from datetime import datetime, timedelta
 
 # import lps_sp.signal as lps_signal
@@ -38,6 +39,21 @@ class AudioAnalysis:
         self.n_samples = n_samples
         self.time_axis = None
         self.data_path = data_path
+
+    def save(self, output_filename: str) -> None:
+        """Save the audio in .wav format
+
+        Args:
+            output_filename (str): Name of saved file.
+        """
+
+        os.makedirs(self.data_path,exist_ok=True)
+        path = os.path.join(self.data_path,output_filename)
+        if self.audio is not None :
+            scipy.io.wavfile.write(path, self.fs, self.audio)
+            print(f"Audio saved as {output_filename}")
+        else :
+            print("Nenhum áudio foi carregado ou extraído.")
 
     def plot(self, output_filename):
         """ Generates and saves the waveform plot of the audio.
@@ -274,16 +290,31 @@ def artifact_analysis(start_shift: int, bkg_shift: int, end_shift: int):
                 bkg_end = time - timedelta(seconds=bkg_shift)
                 end_time = time + timedelta(seconds=end_shift)
 
-                artifact_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}/Artifact'
+                artifact_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/Artifact'
                 simple_plots(loader,buoy_id,bkg_end,end_time,artifact_path,time,"")
 
-                bkg_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}/Background'
+                bkg_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/Background'
                 simple_plots(loader,buoy_id,start_time,bkg_end,bkg_path,time,"bkg")
 
-                both_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/{time}/Both'
+                both_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/Both'
                 simple_plots(loader,buoy_id,start_time,end_time,both_path,time,"")
 
-def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetime, path: str, time: datetime, title: str) -> None:
+def plot_all_wavs(start_shift: int,end_shift: int):
+
+    loader = DataLoader()
+    manager = ArtifactManager()
+
+    for artifact_type in ['EX-SUP', 'HE3m', 'GAE']:
+        for id_artifact in manager.id_from_type(artifact_type):
+            for buoy_id, time in manager[id_artifact]:
+
+                start_time = time - timedelta(seconds=start_shift)
+                end_time = time + timedelta(seconds=end_shift)
+
+                path = f'data/Analysis/{artifact_type}/Boia{buoy_id}'
+                simple_plots(loader,buoy_id,start_time,end_time,path,time,id_artifact)
+
+def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetime, path: str, time: datetime, title: any) -> None:
     duration = (end - start).total_seconds()
 
     fs, audio = loader.get_data(buoy_id, start, end)
@@ -292,10 +323,11 @@ def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetim
     analysis = AudioAnalysis(audio, fs, duration, \
                                     samples, path, time)
 
-    analysis.plot(f'{time}_{title}.png')
-    analysis.psd(f'{time}_psd_{title}.png')
-    analysis.fft(f'{time}_fft_{title}.png')
-    analysis.lofar(f'{time}_lofar_{title}.png')
+    analysis.save(f'{title}.wav')
+    # analysis.plot(f'{time}_{title}.png')
+    # analysis.psd(f'{time}_psd_{title}.png')
+    # analysis.fft(f'{time}_fft_{title}.png')
+    # analysis.lofar(f'{time}_lofar_{title}.png')
 
 if __name__ == "__main__":
 
@@ -306,5 +338,4 @@ if __name__ == "__main__":
     BKG_SHIFT = 0
     END_SHIFT = 2.5
 
-    artifact_analysis(START_SHIFT, BKG_SHIFT, END_SHIFT)
-    plot_artifact_bkg(START_SHIFT, BKG_SHIFT, END_SHIFT)
+    plot_all_wavs(START_SHIFT, END_SHIFT)
