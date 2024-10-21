@@ -7,7 +7,6 @@ import pandas as pd
 class ArtifactManager():
     """ Class representing RVT Artifact system. """
 
-    # TODO Colocar caminho relativo de forma automatica no base_path, acho q da pra fazer isso # pylint: disable=fixme
     def __init__(self, base_path="data/artifacts.csv"):
         self.path = base_path
         self.data = pd.read_csv(base_path)
