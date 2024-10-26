@@ -1,10 +1,10 @@
 import wave
 import os
 import shutil
+from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io
-from datetime import datetime, timedelta
 
 # import lps_sp.signal as lps_signal
 import lps_sp.acoustical.analysis as lps_analysis
@@ -331,7 +331,8 @@ def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetim
 
 if __name__ == "__main__":
 
-    shutil.rmtree("data/Analysis")
+    if os.path.exists("data/Analysis"):
+        shutil.rmtree("data/Analysis")
     os.mkdir("data/Analysis")
 
     START_SHIFT = 2.5

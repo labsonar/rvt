@@ -15,11 +15,6 @@ class DataLoader():
     def __init__(self, base_path="data/RVT/raw_data") -> None:
         self.file_dict = DataLoader.get_file_dict(base_path)
 
-        # for buoy_id, file_list in self.file_dict.items():
-        #     print(buoy_id)
-        #     for file in file_list:
-        #         print('\t: ', file[0], " -> ", file[1])
-
     @staticmethod
     def get_file_dict(base_path: str) -> \
         typing.Dict[int, typing.List[typing.Tuple[datetime.datetime, str]]]:
@@ -137,3 +132,8 @@ class DataLoader():
 
 if __name__ == "__main__":
     data = DataLoader()
+
+    for buoy_id_, file_list in data.file_dict.items():
+        print(buoy_id_)
+        for file in file_list:
+            print('\t: ', file[0], " -> ", file[1])
