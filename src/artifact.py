@@ -115,7 +115,13 @@ class ArtifactManager():
         """
         index = self.find_index(artifact_id)
 
-        try :
+        if f"Buoy{buoy_id}-Time" in self.data.columns:
+            if pd.isna(self.data[f"Buoy{buoy_id}-Time"][index]):
+                raise ValueError
+            return datetime.datetime.strptime(self.data[f"Buoy{buoy_id}-Time"][index],\
+                "%Y-%m-%d %H:%M:%S.%f")
+
+        try:
             str_day = str(self.data["Exercise Day"][index])
             str_file = str(self.data[f"Buoy{buoy_id}-File"][index])[2:-10]
             str_offset = str(self.data[f"Buoy{buoy_id}-Offset"][index])

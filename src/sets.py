@@ -131,13 +131,14 @@ class ArtifactSet:
 
             file = pd.DataFrame.from_dict(file_dict, orient='columns')
             file.index.name = "Artifact ID"
+            file.sort_values(by="Artifact ID", ascending=True, inplace=True)
             file.to_csv(os.path.join(path,file_name))
 
 if __name__ == "__main__":
     Set  = ArtifactSet(random_state=1042)
 
     Set.restringe_data(Set.all_3)
-    Set.generate_sets(0.2,0.3,0.5)
+    Set.generate_sets(0.8,0.1,0.1)
 
     for name, data in Set.sets.items():
         print(f"Subset {name} - {100*len(data)/len(Set.all_data) :.2f}% of total data")

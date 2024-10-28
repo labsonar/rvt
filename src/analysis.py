@@ -299,10 +299,7 @@ def artifact_analysis(start_shift: int, bkg_shift: int, end_shift: int):
                 both_path = f'data/Analysis/{artifact_type}/{id_artifact}/Boia{buoy_id}/Both'
                 simple_plots(loader,buoy_id,start_time,end_time,both_path,time,"")
 
-def plot_all_wavs(start_shift: int,end_shift: int):
-
-    loader = DataLoader()
-    manager = ArtifactManager()
+def plot_all_wavs(loader: DataLoader, manager: ArtifactManager, start_shift: int,end_shift: int):
 
     for artifact_type in ['EX-SUP', 'HE3m', 'GAE']:
         for id_artifact in manager.id_from_type(artifact_type):
@@ -339,4 +336,7 @@ if __name__ == "__main__":
     BKG_SHIFT = 0
     END_SHIFT = 2.5
 
-    plot_all_wavs(START_SHIFT, END_SHIFT)
+    loader_ = DataLoader()
+    manager_ = ArtifactManager()
+
+    plot_all_wavs(loader_, manager_, START_SHIFT, END_SHIFT)
