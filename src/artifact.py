@@ -12,7 +12,7 @@ class ArtifactManager():
         self.data = pd.read_csv(base_path)
         self.index = 0
 
-    def __len__(self) -> int:
+    def __len__(self) -> int: # TODO change to give the amount of pairs {artifact ID, buoy ID} exist in class #pylint: disable=fixme
         """ Get the amount of artifacts.
         
         Returns:

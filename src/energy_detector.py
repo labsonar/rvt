@@ -1,4 +1,5 @@
 """ Module providing energy threshold detector. """
+from collections import deque
 from datetime import timedelta
 import numpy as np
 from artifact import ArtifactManager
@@ -21,35 +22,57 @@ class EnergyThresholdDetector(Detector):
             np.array: amostras onde ocorrem as detecções
         """
 
+        if self.__window_size > len(input_data):
+            raise ValueError(f"Window Size ({self.__window_size}) > data ({len(input_data)}).")
+
+        energy = [data**2 for data in input_data]
+
         detected_samples = []
+        energy_sum = 0.0
 
-        for index in range(len(input_data)-self.__window_size):
-            energy_sum = 0
-            sample = []
+        # First window
+        sample = deque()
+        for index in range(self.__window_size):
+            sample.append(input_data[index])
+            energy_sum += energy[index]
 
-            for jndex in range(self.__window_size):
-                data = input_data[index+jndex]
-                energy_sum += abs(data)**2
-                sample.append(data)
+        if energy_sum/self.__window_size >= self.__threshold:
+            # [0, self.__window_size-1] -> interval
+            detected_samples.append(sample)
+
+        # For next windows
+        for index in range(len(input_data) - self.__window_size):
+            l = index
+            r = index + self.__window_size
+
+            energy_sum -= energy[l]
+            energy_sum += energy[r]
+
+            sample.popleft()
+            sample.append(input_data[r])
 
             if energy_sum/self.__window_size >= self.__threshold:
-                print(sample)
-                detected_samples.append(np.array(sample))
+                # [l+1, r] -> interval
+                detected_samples.append(sample)
 
         return np.array(detected_samples)
 
 if __name__ == "__main__":
 
-    detector = EnergyThresholdDetector(0.0000,1000)
+    detector = EnergyThresholdDetector(10,10)
     manager = ArtifactManager("data/docs/development.csv")
     loader = DataLoader()
 
     delta = timedelta(seconds=20)
 
+    detected_samples_ = []
     for id_artifact in manager:
         for buoy_id_, time in manager[id_artifact]:
 
-            data_ = loader.get_data(buoy_id_,time-delta,time+delta)
-            detected_samples_ = detector.detect(data_)
+            r_, data_ = loader.get_data(buoy_id_,time-delta,time+delta)
+            detection = detector.detect(data_)
 
-    print(detected_samples_)
+            if len(detection) != 0 :
+                detected_samples_.append(detection)
+
+    print(len(detected_samples_))
