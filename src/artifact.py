@@ -13,12 +13,23 @@ class ArtifactManager():
         self.index = 0
 
     def __len__(self) -> int: # TODO change to give the amount of pairs {artifact ID, buoy ID} exist in class #pylint: disable=fixme
-        """ Get the amount of artifacts.
+        """ Get the amount of valuable data.
         
         Returns:
-            int: amount of artifacts.
+            int: amount of pairs {artifact, buoy}.
         """
-        return len(self.data)
+
+        columns1 = ["Buoy1-Time","Buoy4-Time","Buoy3-Time","Buoy2-Time","Buoy5-Time"]
+        columns = [col for col in columns1 if col in self.data.columns]
+
+        if len(columns):
+            return self.data[columns].notna().sum().sum()
+
+        columms2 = ["Buoy1-File","Buoy2-File","Buoy3-File","Buoy4-File","Buoy5-File"]
+        columms3 = ["Buoy1-Offset","Buoy2-Offset","Buoy3-Offset","Buoy4-Offset","Buoy5-Offset"]
+        amount = self.data[columms2].notna().sum().sum()
+        assert(amount == self.data[columms3].notna().sum().sum())
+        return amount
 
     def __iter__(self):
         return iter(self.data["Artifact ID"].to_list())
@@ -94,7 +105,9 @@ class ArtifactManager():
 
             try :
                 mapa[i] = self.get_time(artifact_id,i)
-            except ValueError :
+            except ValueError:
+                continue
+            except KeyError:
                 continue
 
         return mapa
@@ -153,3 +166,5 @@ if __name__ == "__main__":
         print(f"Artifact: {id_artifact}")
         for buoy_id_, time in manager[id_artifact]:
             print(f"\t[{buoy_id_}: {time}] ")
+
+    print(len(manager))
