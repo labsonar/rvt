@@ -4,7 +4,7 @@ import datetime
 import typing
 import bisect
 import numpy as np
-from scipy.io import wavfile # Nao sei se tem alguma biblioteca no Lps_utils que recebe audios
+from scipy.io import wavfile # TODO Nao sei se tem alguma biblioteca no Lps_utils que recebe audios
 
 import lps_utils.utils as lps_utils
 from lps_sp.signal import decimate
@@ -130,10 +130,32 @@ class DataLoader():
 
         return taxa, data_resp
 
+    def get_index(self, start: datetime.datetime, framerate: float,\
+                    time: typing.Union[datetime.datetime, typing.List[datetime.datetime]]) -> int:
+        """ Gets data index of time based on start time and framerate of data.
+
+        Args:
+            start (datetime.datetime): Start time of used data.
+            framerate (float): Framerate of used data.
+            time (datetime.datetime): Time of desired index.
+
+        Returns:
+            int: Data index
+        """
+
+        # TODO make a better implementation for this
+
+        if isinstance(time, datetime.datetime):
+            delta = time - start
+            return int(delta.total_seconds() * framerate)
+
+        if isinstance(time, list):
+            return [int((timex - start).total_seconds() * framerate) for timex in time ]
+
 if __name__ == "__main__":
     data = DataLoader()
 
-    for buoy_id_, file_list in data.file_dict.items():
+    for buoy_id_, file_list_ in data.file_dict.items():
         print(buoy_id_)
-        for file in file_list:
-            print('\t: ', file[0], " -> ", file[1])
+        for file_ in file_list_:
+            print('\t: ', file_[0], " -> ", file_[1])

@@ -137,7 +137,12 @@ class ArtifactSet:
 if __name__ == "__main__":
     Set  = ArtifactSet(random_state=1042)
 
+
     Set.restringe_data(Set.all_3)
+
+    print(f"All data size: {len(Set.manager)}")
+    print(f"Restringed data size: {len(Set.all_data)}")
+
     Set.generate_sets(0.8,0.1,0.1)
 
     for name, data in Set.sets.items():
@@ -145,10 +150,6 @@ if __name__ == "__main__":
 
     Set.save()
 
-    dev = pd.read_csv("data/docs/development.csv")
-    tes = pd.read_csv("data/docs/test.csv")
-    val = pd.read_csv("data/docs/validate.csv")
-
-    print(dev)
-    print(tes)
-    print(val)
+    # dev = pd.read_csv("data/docs/development.csv")
+    # tes = pd.read_csv("data/docs/test.csv")
+    # val = pd.read_csv("data/docs/validate.csv")
