@@ -17,18 +17,15 @@ class Detector(abc.ABC):
             typing.Tuple[typing.List[int], int]: Detected samples and number of windows.
         """
 
-    def evaluate(self,
-                input_data: np.array,
-                expected_detections: typing.List[int],
-                tolerance: float) -> np.array:
+    def evaluate(self, input_data: np.array, expected_detections: typing.List[int],
+                tolerance: int) -> np.array:
         """ Evaluate detect.
 
         Args:
-            input_data (np.array): Data vector
+            input_data (np.array): Data vector.
             expected_detections (typing.List[int]): \
-                                Samples expected to be detected
-            tolerance (int): percentage offset of size of total samples \
-                                to consider samples close enough for detection
+                                Samples expected to be detected.
+            tolerance (int): Offset to consider samples close enough for detection.
 
         Returns:
             np.array: [True_positive, False Negative;
@@ -42,46 +39,62 @@ class Detector(abc.ABC):
         detections: list = result[0]
         size: int = result[1]
 
-        #print(detections, expected_detections)
+        to_erase_expected_detection: list = []
+        to_erase_detection: list = []
 
-        for expected_detection in expected_detections :
+        for index, expected_detection in enumerate(expected_detections):
 
             closest_detection_index = bisect_left(detections, expected_detection)
 
             if closest_detection_index == len(detections):
-                # Detection is not valid (True negative)
-                confusion_matrix[1][0] += 1
                 continue
 
             closest_detection = detections[closest_detection_index]
 
-            if abs(closest_detection - expected_detection) <= tolerance*size:
-                # Detection is valid (True positive)
-                # expected_detections.pop(index)
+            if abs(closest_detection - expected_detection) <= tolerance:
+                # Valid detection found (True positive)
+                detections.pop(closest_detection_index)
+                to_erase_expected_detection.append(index)
                 confusion_matrix[0][0] += 1
-            else:
-                # Detection is not valid (False Positive)
-                confusion_matrix[1][0] += 1
 
-        for detection in detections:
-            # Remaining detections (should not be detected)
+        new_expected_detections: list = []
+        for index, element in enumerate(expected_detections):
+            if not index in to_erase_expected_detection:
+                new_expected_detections.append(element)
+
+        expected_detections = new_expected_detections
+
+        for index, detection in enumerate(detections):
 
             closest_expected_detection_index = bisect_left(expected_detections, detection)
 
             if closest_expected_detection_index == len(expected_detections):
-                # Detection is not valid (True negative)
-                confusion_matrix[1][1] += 1
                 continue
 
             closest_expected_detection = expected_detections[closest_expected_detection_index]
 
-            if abs(closest_expected_detection - detection) <= tolerance*size:
-                # Detection is valid (False negative) (expected to be impossible)
-                # detections.pop(index)
-                confusion_matrix[0][1] += 1
-            else:
-                # Detection is not valid (True negative)
-                confusion_matrix[1][1] += 1
+            if abs(closest_expected_detection - detection) <= tolerance:
+                # Detection expected (True positive) Should be impossible
+                expected_detections.pop(closest_expected_detection_index)
+                to_erase_detection.append(index)
+                confusion_matrix[0][0] += 1
+
+        new_detections: list = []
+        for index, element in enumerate(detections):
+            if not index in to_erase_detection:
+                new_detections.append(element)
+
+        detections = new_detections
+
+        # Remaining expected detections not found are False Negatives
+        confusion_matrix[0][1] += len(expected_detections)
+
+        # Remaining detections are False Positives
+        confusion_matrix[1][0] += len(detections)
+
+        # All of the remaining samples analysed are True Negatives
+        confusion_matrix[1][1] += size - confusion_matrix[0][0]\
+                                - confusion_matrix[0][1] - confusion_matrix[1][0]
 
         # TODO The solution is valid? Not shure if this works in the correct way.
         return confusion_matrix

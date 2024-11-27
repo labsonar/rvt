@@ -130,11 +130,11 @@ def evaluate_test():
 
     expected_detections = loader.get_index(start, fs, expected_detections_datetimes)
 
-    matrix = detector.evaluate(input_data,expected_detections,0.3)
+    matrix = detector.evaluate(input_data,expected_detections,0.1*len(input_data))
 
     plt.figure(figsize=(10,10))
     ax = sns.heatmap(matrix, annot=True, fmt="d", cmap="coolwarm", cbar=False,
-                    annot_kws={"size": 12, "color": "black"})
+                    annot_kws={"size": 35, "color": "black"})
 
     # Show the plot
     #plt.tight_layout()
