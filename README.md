@@ -2,6 +2,8 @@
 This is a Python project in developement within LabSonar/LPS to produce acoustical detector for RVT project.
 
 ## Authors
+- **Developer**: [Gabriel Lisboa](https://github.com/gabrielhblisboa)
+- **Developer**: [Clara Pacheco](https://github.com/clara-ap)
 - **Developer**: [Luís Rafael Sena](https://github.com/ifuaslaerl)
 - **Developer**: [Fábio Oliveira](https://github.com/obs-fabio)
 - **Advisor**: [Natanael Junior](https://github.com/natmourajr/natmourajr)
