@@ -52,7 +52,7 @@ class ZScoreDetector(Detector):
         if board_only:
             if len(anomalies) > 1:
                 diffs = np.diff(anomalies)
-                to_keep = np.insert(diffs > self.normalization_step, 0, True)
+                to_keep = np.insert(diffs > self.step, 0, True)
                 anomalies = anomalies[to_keep]
 
         return anomalies, len(input_data) // self.step
