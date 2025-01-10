@@ -12,7 +12,7 @@ class Metric(enum.Enum):
     DETECTION_PROBABILITY = 0
     FALSE_ALARM_RATE = 1
     FALSE_DISCOVERY_RATE = 2
-
+    PRECISION = 3
 
     def __str__(self):
         """Return the string representation of the Metric enum."""
@@ -22,16 +22,17 @@ class Metric(enum.Enum):
 
         tp, fp, fn, tn = np.array(cm).ravel()
 
-        match self:
-
-            case Metric.DETECTION_PROBABILITY:
-                return tp/(fp + tp)
+        if self == Metric.DETECTION_PROBABILITY:
+            return tp/(fp + tp)
             
-            case Metric.FALSE_ALARM_RATE:
-                return fp/(tn + fp)
+        if self == Metric.FALSE_ALARM_RATE:
+            return fp/(tn + fp)
 
-            case Metric.FALSE_DISCOVERY_RATE:
-                return fp/(fp + tp)
+        if self == Metric.FALSE_DISCOVERY_RATE:
+            return fp/(fp + tp)
+        
+        if self == Metric.PRECISION:
+            return tp/(tp + fn)
 
 
 class Validate():

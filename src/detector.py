@@ -6,6 +6,7 @@ import numpy as np
 
 class Detector(abc.ABC):
     """ Abstract detector for acoustical events. """
+    name: str = "Untitled"
 
     @abc.abstractmethod
     def detect(self, input_data: np.array) -> typing.Tuple[typing.List[int], int]:
