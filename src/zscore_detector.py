@@ -1,6 +1,5 @@
 import typing
 import numpy as np
-from bisect import bisect_left
 from detector import Detector
 
 class ZScoreDetector(Detector):
@@ -34,8 +33,8 @@ class ZScoreDetector(Detector):
         """
         anomalies = []
         for i in range(self.estimation_window_size + self.step,
-                       len(input_data),
-                       self.step):
+                    len(input_data),
+                    self.step):
 
             start_index = i - self.estimation_window_size - self.step
 
