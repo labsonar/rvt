@@ -4,25 +4,26 @@ from scipy.io import wavfile
 from scipy.signal import resample
 import os
 
-INPUT_DIR = "../data/raw_data/20230912"
+INPUT_DIR = "../data/raw_data/"
 OUTPUT_DIR = "../data/test_files"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 df = pd.read_csv("./test_files.csv", delimiter=",")
 
-for file_id in df['Test File ID'].unique():
-    print(f"Processing Test File ID: {file_id}")
+for file_id in df['Test File'].unique():
+    print(f"Processing Test File: {file_id}")
 
-    frag_df = df[df["Test File ID"] == file_id]
+    frag_df = df[df["Test File"] == file_id]
 
     audio_data = []
     sample_rate = None
 
     for i in range(len(frag_df)):
+        day = frag_df.iloc[i]['Day']
         bouy = frag_df.iloc[i]['Bouy']
         raw_file = frag_df.iloc[i]['Raw File']
-        file_path = os.path.join(INPUT_DIR, f"boia{bouy}", raw_file)
+        file_path = os.path.join(INPUT_DIR, f"{day}", f"boia{bouy}", raw_file)
 
         print(f"\tReading {file_path}")
 
