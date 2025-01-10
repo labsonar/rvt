@@ -20,19 +20,15 @@ os.mkdir("Result")
 validate = metrics.Validate()
 
 metrics_list = [metrics.Metric.DETECTION_PROBABILITY,
-                metrics.Metric.FALSE_ALARM_RATE,
-                metrics.Metric.FALSE_DISCOVERY_RATE]
+                metrics.Metric.PRECISION]
 
-scalar = Normalization(1)
+min_max_0 = Normalization(1)
+min_max = Normalization(0)
 
-detectores: typing.Dict[str, Detector] = {
-    "test True": TestDetector(True),
-    "test False": TestDetector(False),
-    "energy 2.5 1600 10": EnergyThresholdDetector(2.5, 1600, 10, scalar),
-    "energy 0.001 2 1": EnergyThresholdDetector(0.001, 2, 1, scalar),
-    "energy 20 1600 160": EnergyThresholdDetector(20, 1600, 160, scalar),
-    # "zscore": ZScoreDetector(1000, 500)
-}
+detectores: typing.List[Detector] = [
+    EnergyThresholdDetector(5, 1000, 100, min_max_0),
+    # ZScoreDetector(1000, 500)
+]
 
 data_path = "data/RVT/test_files"
 data = pd.read_csv("data/docs/test_files.csv")
@@ -52,21 +48,20 @@ for file in files:
         delta = pd.Timedelta(offset).total_seconds()
         gabarito.append(int(delta*fs))
 
-    for label, detector in detectores.items():
+    for detector in detectores:
 
-        print(label)
+        print(detector.name)
         # 0.03 - tempo equivalente a 50 jardas
         cm = detector.evaluate(input, gabarito, 0.03*fs)
         
         sns.heatmap(cm, annot=True, cmap="magma", linewidths=0.5, cbar=False)
-        plt.title(f"{label}_{file}")
-        plt.savefig(f"Result/{label}_{file}.png")
+        plt.title(f"{detector.name}_{file}")
+        plt.savefig(f"Result/{detector.name}_{file}.png")
 
         plt.close('all')
         sns.reset_defaults()
 
-        validate.accumulate(label, cm)
-
+        validate.accumulate(detector.name, cm)
 
 print(validate.build_table(metrics_list))
 

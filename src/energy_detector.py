@@ -20,6 +20,8 @@ class EnergyThresholdDetector(Detector):
             raise ValueError(f"Instant window {self.__instant_window_size} \
                             greater or equal mean energy window {self.__mean_energy_window_size}")
 
+        self.name = f"Energy Threshold Detector {self.__threshold} - {self.__mean_energy_window_size} - {self.__instant_window_size} - {self.__scaler.name}"
+
     def detect(self, input_data: np.array) -> typing.Tuple[typing.List[int], int]:
         """
         Args:
