@@ -229,12 +229,12 @@ if __name__ == "__main__":
 
     manager = ArtifactManager()
 
-    # for id_artifact in manager:
-    #     print(f"Artifact: {id_artifact}")
-    #     for buoy_id_ in manager[id_artifact]:
-    #         print(f"\t[{buoy_id_}: {time}] ")
+    for id_artifact in manager:
+        print(f"Artifact: {id_artifact}")
+        for buoy_id_ in manager[id_artifact]:
+            print(f"\t[{buoy_id_}] ")
 
-    start_ = datetime.datetime(2023, 9, 12, 16, 20)
-    end_ = datetime.datetime(2023, 9, 12, 17, 40)
+    # start_ = datetime.datetime(2023, 9, 12, 16, 20)
+    # end_ = datetime.datetime(2023, 9, 12, 17, 40)
 
-    print(manager.artifact_amount_by_time(3, start_, end_))
+    # print(manager.artifact_amount_by_time(3, start_, end_))

@@ -1,6 +1,6 @@
 import typing
 import numpy as np
-from detector import Detector
+from src.detector import Detector
 
 class ZScoreDetector(Detector):
     """

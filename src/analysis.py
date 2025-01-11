@@ -10,8 +10,8 @@ import scipy.io
 import lps_sp.acoustical.analysis as lps_analysis
 import lps_sp.acoustical.broadband as lps_bb
 import lps_sp.signal as lps_signal
-from artifact import ArtifactManager
-from loader import DataLoader
+from src.artifact import ArtifactManager
+from src.loader import DataLoader
 
 class AudioAnalysis:
     """ Class for audio analysis operations.
@@ -113,7 +113,7 @@ class AudioAnalysis:
 
         plt.figure()
         plt.plot(fft_freq[:len(fft_result)//2], 
-                 20*np.log10(magnitude))
+                20*np.log10(magnitude))
         # plt.plot(fft_freq, np.abs(fft_result))
         plt.title(f"FFT - {self.audio_file}")
         plt.xlabel('Frequency [Hz]')
@@ -146,7 +146,7 @@ class AudioAnalysis:
 
 # TODO Pylint ta reclamando da quantidade de variaveis e ifs dessas funcoes, revisar isso aq depois #pylint: disable=fixme
 def plot_all_buoy(manager: ArtifactManager, loader: DataLoader, \
-                  artifact_type: str, plot_type: str, signal_type: str):
+                    artifact_type: str, plot_type: str, signal_type: str):
     """ Plots the PSD (Power Spectral Density) for all artifacts of a given type and buoy.
 
     Args:
