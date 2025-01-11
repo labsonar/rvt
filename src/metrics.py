@@ -1,6 +1,10 @@
+import os
 import enum
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import seaborn as sns
 
 class Metric(enum.Enum):
     """Enumeration representing metrics for model analysis.
@@ -20,7 +24,7 @@ class Metric(enum.Enum):
 
     def apply(self, cm):
 
-        tp, fp, fn, tn = np.array(cm).ravel()
+        tp, fn, fp, tn = np.array(cm).ravel()
 
         if self == Metric.DETECTION_PROBABILITY:
             return tp/(fp + tp)
@@ -33,7 +37,6 @@ class Metric(enum.Enum):
         
         if self == Metric.PRECISION:
             return tp/(tp + fn)
-
 
 class Validate():
 
@@ -67,3 +70,40 @@ class Validate():
         df = pd.DataFrame(table)
 
         return df
+
+    def confusion_matrix(self, identifier: str, root: str):
+        
+        tp_big = []
+        fn_big = []
+        fp_big = []
+        tn_big = []
+
+        for cm in self.dict[identifier]:
+            tp, fn, fp, tn = np.array(cm).ravel()
+            tp_big.append(tp)
+            fn_big.append(fn)
+            fp_big.append(fp)
+            tn_big.append(tn)
+        
+        cm_big = np.array([[np.mean(tp_big), np.mean(fn_big)],
+                [np.mean(fp_big), np.mean(tn_big)]])
+        
+        cm_uncertain = np.array([[np.std(tp_big), np.std(fn_big)],
+                        [np.std(fp_big), np.std(tn_big)]])
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        cax = ax.matshow(cm_big, cmap="Oranges", alpha=0.8) # TODO check here
+
+        for (i, j), val in np.ndenumerate(cm_big):
+            cm_uncertain_value = cm_uncertain[i, j]
+            text = f"{val:.2f} +- {cm_uncertain_value:.2f}"
+            ax.text(j, i, text, ha="center", va="center", color="black")
+
+        ax.axis("off")
+
+        plt.title(f"{identifier}")
+        path = os.path.join(root,f"{identifier}.png")
+        plt.savefig(path)
+
+        plt.close('all')
+        sns.reset_defaults()
