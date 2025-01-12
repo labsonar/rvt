@@ -3,17 +3,17 @@ import typing
 import numpy as np
 from lps_sp.signal import Normalization
 
-from detector import Detector
+from src import detector
 
-class EnergyThresholdDetector(Detector):
+class EnergyThresholdDetector(detector.Detector):
     """ Class representing an energy threshold detector. """
 
-    def __init__(self, threshold: float, mean_energy_window_size: int, instant_window_size: int, \
-            scaler: typing.Optional[int] = 4):
+    def __init__(self, threshold: float = 36, mean_energy_window_size: int = 4800, instant_window_size: int = 80, \
+            scaler: Normalization = Normalization(1)):
         self.__threshold: float = threshold
         self.__mean_energy_window_size: int = mean_energy_window_size
         self.__instant_window_size: int = instant_window_size
-        self.__scaler: Normalization = Normalization(scaler)
+        self.__scaler: Normalization = scaler
 
         if self.__instant_window_size >= self.__mean_energy_window_size:
             # TODO See if this print is okay

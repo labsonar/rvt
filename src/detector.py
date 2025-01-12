@@ -19,7 +19,7 @@ class Detector(abc.ABC):
         """
 
     def evaluate(self, input_data: np.array, expected_detections: typing.List[int],
-                tolerance: int) -> np.array:
+                tolerance: int) -> np.ndarray:
         """ Evaluate detect.
 
         Args:
@@ -98,4 +98,4 @@ class Detector(abc.ABC):
                                 - confusion_matrix[0][1] - confusion_matrix[1][0]
 
         # TODO The solution is valid? Not shure if this works in the correct way.
-        return confusion_matrix
+        return np.array(confusion_matrix)
