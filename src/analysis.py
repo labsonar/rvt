@@ -1,6 +1,6 @@
-import wave
 import os
 import shutil
+import typing
 from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,7 +67,7 @@ class AudioAnalysis:
         if self.audio is not None and self.time_axis is not None:
             plt.figure(figsize=(10, 4))
             plt.plot(self.time_axis, self.audio)
-            plt.title(f"Audio Waveform - {self.audio_file}")
+            plt.title(f"Audio Waveform - {self.data_path}")
             plt.xlabel("Time (seconds)")
             plt.ylabel("Amplitude")
             plt.grid()
@@ -89,7 +89,7 @@ class AudioAnalysis:
 
         plt.figure(figsize=(12, 6))
         plt.plot(psd_freq, psd_result)
-        plt.title(f"PSD - {self.audio_file}")
+        plt.title(f"PSD - {self.data_path}")
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('Power [W/Hz]')
         plt.grid()
@@ -115,7 +115,7 @@ class AudioAnalysis:
         plt.plot(fft_freq[:len(fft_result)//2], 
                 20*np.log10(magnitude))
         # plt.plot(fft_freq, np.abs(fft_result))
-        plt.title(f"FFT - {self.audio_file}")
+        plt.title(f"FFT - {self.data_path}")
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Amplitude [dB]')
         plt.grid()
@@ -135,14 +135,14 @@ class AudioAnalysis:
 
         plt.figure()
         plt.pcolormesh(time, freq, power, shading='gouraud')
-        plt.title(f"LOFAR - {self.audio_file}")
+        plt.title(f"LOFAR - {self.data_path}")
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [s]')
         plt.colorbar(label='Power/Frequency [dB/Hz]')
         os.makedirs(self.data_path, exist_ok=True)
         plt.savefig(f"{self.data_path}/{output_filename}")
         plt.close()
-        print(f"LOFARgram saved as {output_filename}") 
+        print(f"LOFARgram saved as {output_filename}")
 
 # TODO Pylint ta reclamando da quantidade de variaveis e ifs dessas funcoes, revisar isso aq depois #pylint: disable=fixme
 def plot_all_buoy(manager: ArtifactManager, loader: DataLoader, \
@@ -231,8 +231,8 @@ def plot_artifact_bkg(start_shift: int, bkg_shift: int, end_shift: int):
                 fs, audio = loader.get_data(buoy_id, bkg_end, end_time)
                 n_samples = int(duration * fs)
 
-                audio_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Artifact'
-                bkg_path = f'data/Analysis/{artifact_type}/Boia{buoy_id}/{time}/Background'
+                audio_path = f'Analysis/{artifact_type}/Buoy{buoy_id}/{time}/Artifact'
+                bkg_path = f'Analysis/{artifact_type}/Buoy{buoy_id}/{time}/Background'
 
                 bkg_duration = (bkg_end - start_time).total_seconds()
 
@@ -321,10 +321,53 @@ def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetim
                                     samples, path, time)
 
     analysis.save(f'{title}.wav')
-    # analysis.plot(f'{time}_{title}.png')
-    # analysis.psd(f'{time}_psd_{title}.png')
-    # analysis.fft(f'{time}_fft_{title}.png')
-    # analysis.lofar(f'{time}_lofar_{title}.png')
+    analysis.plot(f'{time}_{title}.png')
+    analysis.psd(f'{time}_psd_{title}.png')
+    analysis.fft(f'{time}_fft_{title}.png')
+    analysis.lofar(f'{time}_lofar_{title}.png')
+
+def plot(buoy_id: int, artifact_id: int, plot_: str, start: datetime, end: datetime,
+        time: datetime, root: str) -> None:
+    """ Plot data.
+
+    Args:
+        buoy_id (int): Buoy identification
+        artifact_id (int): Artifact identification
+        plots (typing.List[str]): Plots types
+        start (datetime): Start time
+        end (datetime): End time
+        time (datetime): Offset of detection
+        root (str, optional): Root where plot is saved. Defaults to "Analysis".
+    """
+
+    manager = ArtifactManager()
+    loader = DataLoader()
+
+    artifact_type = manager.type_from_id(artifact_id)
+    duration = (end-start).total_seconds()
+
+    path = os.path.join(root,f"{artifact_type}/Buoy {buoy_id}/{artifact_id}")
+
+    fs, audio = loader.get_data(buoy_id, start, end)
+    samples = int(duration * fs)
+
+    analysis = AudioAnalysis(audio, fs, duration, \
+                                samples, path, time)
+
+    if "fft" == plot_:
+        analysis.fft("fft.png")
+
+    if "lofar" == plot_:
+        analysis.lofar("lofar.png")
+
+    if "psd" == plot_:
+        analysis.psd("psd.png")
+
+    if "time" == plot_:
+        analysis.plot("time.png")
+
+    if "wav" == plot_:
+        analysis.save("audio.wav")
 
 if __name__ == "__main__":
 

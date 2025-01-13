@@ -8,11 +8,11 @@ from src import detector
 class EnergyThresholdDetector(detector.Detector):
     """ Class representing an energy threshold detector. """
 
-    def __init__(self, threshold: float = 36, mean_energy_window_size: int = 4800, instant_window_size: int = 80, \
-            scaler: Normalization = Normalization(1)):
+    def __init__(self, threshold: float = 75, mean_energy_window_size: int = 1400, \
+            instant_window_size: int = 10, scaler: Normalization = Normalization(1)):
         self.__threshold: float = threshold
-        self.__mean_energy_window_size: int = mean_energy_window_size
-        self.__instant_window_size: int = instant_window_size
+        self.__mean_energy_window_size: int = round(mean_energy_window_size)
+        self.__instant_window_size: int = round(instant_window_size)
         self.__scaler: Normalization = scaler
 
         if self.__instant_window_size >= self.__mean_energy_window_size:
@@ -65,7 +65,7 @@ class EnergyThresholdDetector(detector.Detector):
             mean_energy = mean_energy_sum/self.__mean_energy_window_size
             instant_energy = instant_energy_sum/self.__instant_window_size
 
-            if instant_energy > self.__threshold * mean_energy:
+            if instant_energy / mean_energy > self.__threshold:
 
                 if not detection_occuring:
                     detection_occuring = True
