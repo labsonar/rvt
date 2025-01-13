@@ -19,14 +19,14 @@ data = pd.read_csv("data/docs/test_files.csv")
 FS = 8000
 detectores: typing.List[Detector] = [
     energy.EnergyThresholdDetector(),
-    # zscore.ZScoreDetector(1000, 500), # Não ta funcionando
+    zscore.ZScoreDetector(1000, 500), # Não ta funcionando
 ]
 
 parser = argparse.ArgumentParser(description="App made to test detectors.")
 
 parser.add_argument("-f", "--files", type=int, nargs="*", \
         default=data["Test File ID"].unique(),
-        help="Files to be analysed")
+        help="Files to be analysed. Defaulto to all.")
 
 parser.add_argument("-m", "--metrics", type=int, nargs="*", \
         default=[i for i in range(len(Metric))],
@@ -34,14 +34,15 @@ parser.add_argument("-m", "--metrics", type=int, nargs="*", \
             0 - Detection Probability\
             1 - False Alarm Rate\
             2 - False Discovery Rate\
-            3 - Precision")
+            3 - Precision\
+            Default to all.")
 
 parser.add_argument("-d", "--detector", type=int, nargs="*", \
         default=[i for i in range(len(detectores))], \
         help="Detectors to be analysed:\
             0 - Energy Threshold Detector\
             1 - Zscore Detector\
-            2 - Test Detector")
+            Default to all.")
 
 args = parser.parse_args()
 

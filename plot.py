@@ -20,31 +20,31 @@ parser = argparse.ArgumentParser(description="App made to plot data.")
 
 parser.add_argument("-s", "--start", type=float, \
     default=2.5,
-    help="Start shift in seconds of event to be analysed.")
+    help="Start shift in seconds of event to be analysed. Default to 2.5 seconds.")
 
 parser.add_argument("-e", "--end", type=float, \
     default=2.5,
-    help="End shift in seconds of event to be analysed.")
+    help="End shift in seconds of event to be analysed. Default to 2.5 seconds.")
 
 parser.add_argument("-ba", "--background", type=float, \
     default=None, \
-    help="Background shift in seconds of event to be analysed.")
+    help="Background shift in seconds of event to be analysed. Default to not plot background")
 
 parser.add_argument("-bu", "--buoys", type=int, nargs="*", \
     default=manager_.get_buoys(),
-    help="Buoys to be analysed: 1, 2, 3, 4, 5.")
+    help="Buoys to be analysed: 1, 2, 3, 4, 5. Default to plot all")
 
 parser.add_argument("-p", "--plots", type=str, nargs="*", \
     default=['fft', 'psd', 'lofar', 'time'],
-    help="Plots to be made: 'fft', 'psd', 'lofar', 'time'.")
+    help="Plots to be made: 'fft', 'psd', 'lofar', 'time'. Default to plot all.")
 
 parser.add_argument("-t", "--type", type=str, nargs="*", \
     default=manager_.get_types(),
-    help=f"Artifact types to be ploted: {manager_.get_types()}.")
+    help=f"Artifact types to be ploted: {manager_.get_types()}. Default to plot all.")
 
 parser.add_argument("-i", "--id", type=int, nargs="*", \
     default=None,
-    help="Específic artifact to be ploted.")
+    help="Específic artifact to be ploted. Default to None.")
 
 args = parser.parse_args()
 

@@ -16,6 +16,7 @@ class ZScoreDetector(Detector):
         """
         self.estimation_window_size = estimation_window_size
         self.step = step
+        self.name = f"Zscore Detector - {self.estimation_window_size} - {self.step}"
 
     def detect(self, input_data: np.array, threshold: float = 3, board_only: bool = True) -> typing.Tuple[typing.List[int], int]:
         """
