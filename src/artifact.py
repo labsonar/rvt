@@ -3,6 +3,7 @@ import typing
 import datetime
 import bisect
 import pandas as pd
+import re
 
 class ArtifactManager():
     """ Class representing RVT Artifact system. """
@@ -225,6 +226,42 @@ class ArtifactManager():
 
         raise ValueError("Unexpected error.")
 
+    def get_types(self) -> typing.List[str]:
+        """ get all types of artifact in data.
+
+        Returns:
+            typing.List[str]: All artifact types.
+        """
+
+        return list(self.data["Shooting Type"].unique())
+
+    def get_buoys(self) -> typing.List[int]:
+        """ Get all buoys stored in data.
+
+        Returns:
+            typing.List[int]: All available Buoys.
+        """
+
+        pattern = r"Buoy\d-File"
+        asw = []
+        for column in self.data.columns:
+            if re.fullmatch(pattern, column):
+                asw.append(int(column[4]))
+        return asw
+
+    def type_from_id(self, artifact_id: int) -> str:
+        """ Get type of the artifact by its ID
+
+        Args:
+            artifact_id (int): Artifact Identification
+
+        Returns:
+            str: Artifact Type
+        """
+
+        index = self.find_index(artifact_id)
+        return self.data.loc[index, "Shooting Type"]
+
 if __name__ == "__main__":
 
     manager = ArtifactManager()
@@ -232,7 +269,7 @@ if __name__ == "__main__":
     for id_artifact in manager:
         print(f"Artifact: {id_artifact}")
         for buoy_id_ in manager[id_artifact]:
-            print(f"\t[{buoy_id_}] ")
+            print(f"\t[{buoy_id_}] {manager.get_time(id_artifact, buoy_id_)} ")
 
     # start_ = datetime.datetime(2023, 9, 12, 16, 20)
     # end_ = datetime.datetime(2023, 9, 12, 17, 40)

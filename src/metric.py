@@ -22,7 +22,7 @@ class Metric(enum.Enum):
         tp, fn, fp, tn = np.array(cm).ravel()
 
         if self == Metric.DETECTION_PROBABILITY:
-            return tp/(fp + tp)
+            return tp/(tp + fn)
             
         if self == Metric.FALSE_ALARM_RATE:
             return fp/(tn + fp)
@@ -31,5 +31,5 @@ class Metric(enum.Enum):
             return fp/(fp + tp)
         
         if self == Metric.PRECISION:
-            return tp/(tp + fn)
+            return tp/(tp + fp)
 
