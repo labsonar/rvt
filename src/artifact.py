@@ -2,8 +2,8 @@
 import typing
 import datetime
 import bisect
-import pandas as pd
 import re
+import pandas as pd
 
 class ArtifactManager():
     """ Class representing RVT Artifact system. """
@@ -148,7 +148,7 @@ class ArtifactManager():
         return amount
 
     def artifact_amount_by_time(self, buoy_id: int, \
-                                start: datetime.datetime, end: datetime.datetime) -> typing.List[int]:
+        start: datetime.datetime, end: datetime.datetime) -> typing.List[int]:
         """ Gets the amount of artifacts in time interval.
 
         Args:

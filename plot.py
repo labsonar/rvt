@@ -27,8 +27,8 @@ parser.add_argument("-e", "--end", type=float, \
     help="End shift in seconds of event to be analysed. Default to 2.5 seconds.")
 
 parser.add_argument("-ba", "--background", type=float, \
-    default=None, \
-    help="Background shift in seconds of event to be analysed. Default to not plot background")
+    default=0.5, \
+    help="Background shift in seconds of event to be analysed.")
 
 parser.add_argument("-bu", "--buoys", type=int, nargs="*", \
     default=manager_.get_buoys(),
@@ -65,21 +65,33 @@ for artifact_id in artifacts:
         if buoy_id in args.buoys:
             print(f"\tBuoy {buoy_id}:")
 
-            for plot in args.plots:
+            start = time-timedelta(seconds=args.start)
+            end = time+timedelta(seconds=args.end)
 
-                start = time-timedelta(seconds=args.start)
-                end = time+timedelta(seconds=args.end)
+            for plot in args.plots:
 
                 print("\t\tArtifact: ", end="")
                 analysis.plot(buoy_id, artifact_id, plot, \
                     start, end, time, "Analysis/Artifact")
 
             if args.background:
-                for plot in args.plots:
 
-                    background = time-timedelta(seconds=args.background)
-                    end = time+timedelta(seconds=args.end)
+                background = time-timedelta(seconds=args.background)
+
+                for plot in args.plots:
 
                     print("\t\tBackground: ", end="")
                     analysis.plot(buoy_id, artifact_id, plot, \
-                        background, end, time, "Analysis/Background")
+                        start, background, time, "Analysis/Background")
+
+                for plot in args.plots:
+
+                    if plot == "lofar":
+                        continue
+
+                    if plot == "time":
+                        continue
+
+                    print("\t\tArtifact x Background: ", end="")
+                    analysis.plot_artifact_vs_bkg(buoy_id, artifact_id, plot,\
+                        start, background, end, time, "Analysis/Artifact x Background")

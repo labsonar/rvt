@@ -1,3 +1,5 @@
+""" Module made to plot data in diferent analytics. """
+
 import os
 import shutil
 import typing
@@ -31,13 +33,15 @@ class AudioAnalysis:
     """
 
     # TODO Revisar se todos esses inputs sao realmente necessarios, pylint ta reclamando # pylint: disable=fixme
-    def __init__(self, audio, fs, duration, n_samples, data_path, time):
+    def __init__(self, audio: np.ndarray, fs: int, duration: float, n_samples: int,\
+        data_path: str, time: datetime):
+
         self.audio_file = time
         self.audio = audio
         self.fs = fs
         self.duration = duration
         self.n_samples = n_samples
-        self.time_axis = None
+        self.time_axis = np.linspace(0, self.duration, num=self.n_samples)
         self.data_path = data_path
 
     def save(self, output_filename: str) -> None:
@@ -55,14 +59,12 @@ class AudioAnalysis:
         else :
             print("Nenhum áudio foi carregado ou extraído.")
 
-    def plot(self, output_filename):
+    def plot(self, output_filename: str) -> None:
         """ Generates and saves the waveform plot of the audio.
 
         Args:
             output_filename (str): The filename for saving the plot.
         """
-
-        self.time_axis = np.linspace(0, self.duration, num=self.n_samples)
 
         if self.audio is not None and self.time_axis is not None:
             plt.figure(figsize=(10, 4))
@@ -78,14 +80,15 @@ class AudioAnalysis:
         else:
             print("Nenhum áudio foi carregado ou extraído.")
 
-    def psd(self, output_filename):
+    def psd(self, output_filename: str) -> None:
         """ Generates and saves the Power Spectral Density (PSD) plot.
 
         Args:
             output_filename (str): The filename for saving the plot.
         """
-        
-        psd_freq, psd_result = lps_bb.psd(signal=self.audio, fs=self.fs, window_size=4096, overlap=0.5)
+
+        psd_freq, psd_result = \
+            lps_bb.psd(signal=self.audio, fs=self.fs, window_size=4096, overlap=0.5)
 
         plt.figure(figsize=(12, 6))
         plt.plot(psd_freq, psd_result)
@@ -98,7 +101,7 @@ class AudioAnalysis:
         plt.close()
         print(f"PSD saved as {output_filename}")
 
-    def fft(self, output_filename):
+    def fft(self, output_filename: str) -> None:
         """ Generates and saves the Fast Fourier Transform (FFT) plot.
 
         Args:
@@ -112,7 +115,7 @@ class AudioAnalysis:
         magnitude[magnitude == 0] = 1e-10
 
         plt.figure()
-        plt.plot(fft_freq[:len(fft_result)//2], 
+        plt.plot(fft_freq[:len(fft_result)//2],
                 20*np.log10(magnitude))
         # plt.plot(fft_freq, np.abs(fft_result))
         plt.title(f"FFT - {self.data_path}")
@@ -124,7 +127,7 @@ class AudioAnalysis:
         plt.close()
         print(f"FFT saved as {output_filename}")
 
-    def lofar(self, output_filename):
+    def lofar(self, output_filename: str) -> None:
         """ Generates and saves LOFAR analysis plot.
 
         Args:
@@ -144,7 +147,81 @@ class AudioAnalysis:
         plt.close()
         print(f"LOFARgram saved as {output_filename}")
 
-# TODO Pylint ta reclamando da quantidade de variaveis e ifs dessas funcoes, revisar isso aq depois #pylint: disable=fixme
+class BackgroundAnalysis:
+
+    def __init__(self, art_audio: np.ndarray, bkg_audio: np.ndarray, art_fs: int, bkg_fs: int,\
+        art_duration: float, bkg_duration: float, art_samples: int, bkg_samples: int,\
+            data_path: str, time: datetime):
+
+        self.art_audio = art_audio
+        self.bkg_audio = bkg_audio
+        self.art_fs = art_fs
+        self.bkg_fs = bkg_fs
+        self.art_duration = art_duration
+        self.bkg_duration = bkg_duration
+        self.art_samples = art_samples
+        self.bkg_samples = bkg_samples
+        self.data_path = data_path
+        self.time = time
+        self.art_time_axis = np.linspace(0, self.art_duration, num=self.art_samples)
+        self.bkg_time_axis = np.linspace(0, self.bkg_duration, num=self.bkg_samples)
+
+        os.makedirs(self.data_path, exist_ok=True)
+
+    def psd(self, output_filename: str) -> None:
+        data_freq, data_result = lps_bb.psd(signal=self.art_audio, fs=self.art_fs,\
+                                    window_size=4096, overlap=0.5)
+
+        data_bkg_freq, data_bkg_result = lps_bb.psd(signal=self.bkg_audio, fs=self.bkg_fs,\
+                                                    window_size=4096, overlap=0.5)
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(data_freq, data_result, label='Artifact')
+        plt.plot(data_bkg_freq, data_bkg_result, label='Background')
+        plt.title(f"PSD - {self.data_path}")
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Power [W/Hz]')
+        plt.grid()
+        plt.legend()
+        path = os.path.join(self.data_path, f"{output_filename}.png")
+        plt.savefig(path)
+        plt.close()
+
+        print(f"PSD saved as {output_filename}")
+
+    def fft(self, output_filename: str) -> None:
+
+        art_result = np.fft.fft(self.art_audio)
+        art_freq = np.fft.fftfreq(len(self.art_audio), 1/self.art_fs)
+
+        art_magnitude = np.abs(art_result)[:len(art_result)//2]
+        art_magnitude[art_magnitude == 0] = 1e-10
+
+        bkg_result = np.fft.fft(self.bkg_audio)
+        bkg_freq = np.fft.fftfreq(len(self.bkg_audio), 1/self.bkg_fs)
+
+        bkg_magnitude = np.abs(bkg_result)[:len(bkg_result)//2]
+        bkg_magnitude[bkg_magnitude == 0] = 1e-10
+
+        plt.figure()
+
+        plt.plot(art_freq[:len(art_result)//2],
+                20*np.log10(art_magnitude), label="Artifact")
+
+        plt.plot(bkg_freq[:len(bkg_result)//2],
+                20*np.log10(bkg_magnitude), label="Background")
+
+        plt.title(f"FFT - {self.data_path}")
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Amplitude [dB]')
+        plt.grid()
+        plt.legend()
+        plt.savefig(f"{self.data_path}/{output_filename}")
+        plt.close()
+        print(f"FFT saved as {output_filename}")
+
+# TODO May delete some funcions?
+
 def plot_all_buoy(manager: ArtifactManager, loader: DataLoader, \
                     artifact_type: str, plot_type: str, signal_type: str):
     """ Plots the PSD (Power Spectral Density) for all artifacts of a given type and buoy.
@@ -158,11 +235,14 @@ def plot_all_buoy(manager: ArtifactManager, loader: DataLoader, \
     buoy_data = {}
 
     for id_artifact in manager.id_from_type(artifact_type):
-        for buoy_id, time in manager[id_artifact]:
+        for buoy_id in manager[id_artifact]:
+
+            time = manager_.get_time(id_artifact, buoy_id)
 
             if signal_type == 'artifact':
                 start_time = time - timedelta(seconds=0.05)
                 end_time = time + timedelta(seconds=0.25)
+
             elif signal_type == 'background':
                 start_time = time - timedelta(seconds=10)
                 end_time = time - timedelta(seconds=2)
@@ -326,17 +406,18 @@ def simple_plots(loader: DataLoader, buoy_id: int, start: datetime, end: datetim
     analysis.fft(f'{time}_fft_{title}.png')
     analysis.lofar(f'{time}_lofar_{title}.png')
 
-def plot(buoy_id: int, artifact_id: int, plot_: str, start: datetime, end: datetime,
-        time: datetime, root: str) -> None:
+def plot(buoy_id: int, artifact_id: int, plot_: str, start: datetime, end: datetime,\
+    time: datetime, root: str) -> None:
     """ Plot data.
 
     Args:
-        buoy_id (int): Buoy identification
-        artifact_id (int): Artifact identification
-        plots (typing.List[str]): Plots types
-        start (datetime): Start time
-        end (datetime): End time
-        time (datetime): Offset of detection
+        buoy_id (int): Buoy identification.
+        artifact_id (int): Artifact identification.
+        plots (typing.List[str]): Plots types.
+        start (datetime): Start time.
+        end (datetime): End time.
+        background (datetime) : Background time before offset.
+        time (datetime): Offset of detection.
         root (str, optional): Root where plot is saved. Defaults to "Analysis".
     """
 
@@ -368,6 +449,48 @@ def plot(buoy_id: int, artifact_id: int, plot_: str, start: datetime, end: datet
 
     if "wav" == plot_:
         analysis.save("audio.wav")
+
+def plot_artifact_vs_bkg(buoy_id: int, artifact_id: int, plot_: str,\
+    start: datetime, bkg: datetime, end: datetime, time: datetime, root: str) -> None:
+    """ Plot artifact x background data.
+
+    Args:
+        buoy_id (int): Buoy identification.
+        artifact_id (int): Artifact identification.
+        plots (typing.List[str]): Plots types.
+        start (datetime): Start time.
+        end (datetime): End time.
+        background (datetime) : Background time before offset.
+        time (datetime): Offset of detection.
+        root (str, optional): Root where plot is saved. Defaults to "Analysis".
+    """
+
+    loader = DataLoader()
+    manager = ArtifactManager()
+
+    artifact_type = manager.type_from_id(artifact_id)
+    art_duration = (bkg-start).total_seconds()
+    bkg_duration = (end-bkg).total_seconds()
+
+    path = os.path.join(root,f"{artifact_type}/Buoy {buoy_id}/{artifact_id}")
+
+    bkg_fs, bkg_audio = loader.get_data(buoy_id, start, bkg)
+    bkg_samples = int(art_duration * bkg_fs)
+
+    art_fs, art_audio = loader.get_data(buoy_id, bkg, end)
+    art_samples = int(bkg_duration * art_fs)
+
+    analysis = BackgroundAnalysis(art_audio, bkg_audio, art_fs, bkg_fs,\
+        art_duration, bkg_duration, art_samples, bkg_samples, path, time)
+
+    if "fft" == plot_:
+        analysis.fft("fft.png")
+
+    if "psd" == plot_:
+        analysis.psd("psd.png")
+
+    if "time" == plot_:
+        analysis.plot("time.png")
 
 if __name__ == "__main__":
 

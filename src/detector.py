@@ -9,7 +9,7 @@ class Detector(abc.ABC):
     name: str = "Untitled"
 
     @abc.abstractmethod
-    def detect(self, input_data: np.array) -> typing.Tuple[typing.List[int], int]:
+    def detect(self, input_data: np.ndarray) -> typing.Tuple[typing.List[int], int]:
         """
         Args:
             input_data (np.array): Data vector.
@@ -18,7 +18,7 @@ class Detector(abc.ABC):
             typing.Tuple[typing.List[int], int]: Detected samples and number of windows.
         """
 
-    def evaluate(self, input_data: np.array, expected_detections: typing.List[int],
+    def evaluate(self, input_data: np.ndarray, expected_detections: typing.List[int],
                 tolerance: int) -> np.ndarray:
         """ Evaluate detect.
 

@@ -50,10 +50,9 @@ class DataLoader():
             date = datetime.datetime.strptime(f"{full_day}{hour}{minute}", "%Y%m%d%H%M")
 
             if buoy_id not in file_dict:
-                file_dict[buoy_id] = []
+                file_dict[buoy_id] = [()] # Changed to solve start-=1 problem in get_data()
 
             file_dict[buoy_id].append((date,file))
-
 
         file_dict = {k: file_dict[k] for k in sorted(file_dict)}
 
@@ -143,7 +142,7 @@ class DataLoader():
             int: Data index
         """
 
-        # TODO make a better implementation for this
+        # TODO make a better implementation for this (May exclude this)
 
         if isinstance(time, datetime.datetime):
             delta = time - start
