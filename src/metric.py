@@ -1,3 +1,5 @@
+""" Module providing Metrics control. """
+
 import enum
 import numpy as np
 
@@ -17,19 +19,26 @@ class Metric(enum.Enum):
         """Return the string representation of the Metric enum."""
         return str(self.name).rsplit('.', maxsplit=1)[-1].lower()
 
-    def apply(self, cm: np.ndarray):
+    def apply(self, cm: np.ndarray) -> float:
+        """Apply Metric to confusion matrix.
+
+        Args:
+            cm (np.ndarray): Confusion matrix in shape 2x2
+
+        Returns:
+            float: metric. Recomended to multiply by 100 for better visualization.
+        """
 
         tp, fn, fp, tn = np.array(cm).ravel()
 
         if self == Metric.DETECTION_PROBABILITY:
             return tp/(tp + fn)
-            
+
         if self == Metric.FALSE_ALARM_RATE:
             return fp/(tn + fp)
 
         if self == Metric.FALSE_DISCOVERY_RATE:
             return fp/(fp + tp)
-        
+
         if self == Metric.PRECISION:
             return tp/(tp + fp)
-
