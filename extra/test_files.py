@@ -4,8 +4,8 @@ from scipy.io import wavfile
 from scipy.signal import resample
 import os
 
-INPUT_DIR = "../data/raw_data/"
-OUTPUT_DIR = "../data/test_files"
+INPUT_DIR = "../data/RVT/raw_data/"
+OUTPUT_DIR = "../data/RVT/test_files"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

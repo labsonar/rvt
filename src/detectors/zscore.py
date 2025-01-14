@@ -8,7 +8,7 @@ class ZScoreDetector(Detector):
     Detects anomalies in time series data using Z-scores.
     """
 
-    def __init__(self, estimation_window_size: int, step: int = 1):
+    def __init__(self, estimation_window_size: int = 16384, step: int = 32):
         """
         Parameters:
         - estimation_window_size (int): The size of the moving window to calculate mean and std deviation.
@@ -18,7 +18,7 @@ class ZScoreDetector(Detector):
         self.step = step
         self.name = f"Zscore Detector - {self.estimation_window_size} - {self.step}"
 
-    def detect(self, input_data: np.array, threshold: float = 3, board_only: bool = True) -> typing.Tuple[typing.List[int], int]:
+    def detect(self, input_data: np.array, threshold: float = 2, board_only: bool = True) -> typing.Tuple[typing.List[int], int]:
         """
         Perform Z-score based anomaly detector on the given data.
 
@@ -33,29 +33,60 @@ class ZScoreDetector(Detector):
             detected.
         """
         anomalies = []
+        z_scoress = []
         for i in range(self.estimation_window_size + self.step,
-                    len(input_data),
-                    self.step):
+                       len(input_data),
+                       self.step):
 
-            start_index = i - self.estimation_window_size - self.step
+            start_index = i-self.estimation_window_size-self.step
 
-            estimation_window = input_data[start_index:start_index + self.estimation_window_size]
+            estimation_window = input_data[start_index:start_index+self.estimation_window_size]
             mean = np.mean(estimation_window)
             std = np.std(estimation_window)
 
-            sample_window = input_data[i - self.step:i]
-            z_score = np.abs((np.median(sample_window) - mean) / std)
+            sample_window = input_data[i-self.step:i]
+            z_scores = np.abs((np.median(sample_window) - mean) / std)
 
-            if z_score > threshold:
+            if z_scores > threshold:
                 anomalies.append(i - self.step)
+
+            z_scoress.append(np.median(sample_window))
+
+        anomalies = np.array(anomalies)
 
         if board_only:
             if len(anomalies) > 1:
                 diffs = np.diff(anomalies)
                 to_keep = np.insert(diffs > self.step, 0, True)
+                print(f"to_keep: {to_keep}")
                 anomalies = anomalies[to_keep]
 
-        return anomalies, len(input_data) // self.step
+        return anomalies.tolist(), len(input_data) // self.step
+    
+        # anomalies = []
+        # for i in range(self.estimation_window_size + self.step,
+        #             len(input_data),
+        #             self.step):
+
+        #     start_index = i - self.estimation_window_size - self.step
+
+        #     estimation_window = input_data[start_index:start_index + self.estimation_window_size]
+        #     mean = np.mean(estimation_window)
+        #     std = np.std(estimation_window)
+
+        #     sample_window = input_data[i - self.step:i]
+        #     z_score = np.abs((np.median(sample_window) - mean) / std)
+
+        #     if z_score > threshold:
+        #         anomalies.append(i - self.step)
+
+        # if board_only:
+        #     if len(anomalies) > 1:
+        #         diffs = np.diff(anomalies)
+        #         to_keep = np.insert(diffs > self.step, 0, True)
+        #         anomalies = anomalies[to_keep]
+
+        # return anomalies, len(input_data) // self.step
     
 
 # Example usage:
