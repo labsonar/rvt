@@ -19,7 +19,7 @@ data = pd.read_csv("data/docs/test_files.csv")
 FS = 8000
 detectores: typing.List[Detector] = [
     energy.EnergyThresholdDetector(),
-    zscore.ZScoreDetector(1000, 500), # Não ta funcionando
+    zscore.ZScoreDetector(20, 4, 4)
 ]
 
 parser = argparse.ArgumentParser(description="App made to test detectors.")

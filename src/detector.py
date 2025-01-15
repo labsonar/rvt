@@ -29,7 +29,7 @@ class Detector(abc.ABC):
             tolerance (int): Offset to consider samples close enough for detection.
 
         Returns:
-            np.array: [True_positive, False Negative;
+            np.array: [True positive, False Negative;
                         False positive, True Negative]
         """
 
@@ -93,9 +93,9 @@ class Detector(abc.ABC):
         # Remaining detections are False Positives
         confusion_matrix[1][0] += len(detections)
 
-        # All of the remaining samples analysed are True Negatives
+        # All of the remaining samples analyzed are True Negatives
         confusion_matrix[1][1] += size - confusion_matrix[0][0]\
                                 - confusion_matrix[0][1] - confusion_matrix[1][0]
 
-        # TODO The solution is valid? Not shure if this works in the correct way.
+        # TODO The solution is valid? Not sure if this works in the correct way.
         return np.array(confusion_matrix)

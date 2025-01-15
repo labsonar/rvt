@@ -1,6 +1,9 @@
 import typing
 import numpy as np
+import matplotlib.pyplot as plt
 from src.detector import Detector
+
+import lps_sp.signal as lps_signal
 
 class ZScoreDetector(Detector):
     """
@@ -8,32 +11,42 @@ class ZScoreDetector(Detector):
     Detects anomalies in time series data using Z-scores.
     """
 
-    def __init__(self, estimation_window_size: int = 16384, step: int = 32):
+    def __init__(self, estimation_window_size: int = 16384, step: int = 32, threshold: float = 3,
+                 scaler: lps_signal.Normalization = lps_signal.Normalization(1), border_only: bool = True):
         """
         Parameters:
-        - estimation_window_size (int): The size of the moving window to calculate mean and std deviation.
-        - step (int, optional): The step size between samples for detection. Defaults to 1.
+        - estimation_window_size (int, optional): The size of the moving window to calculate mean
+          and standard deviation. Defaults to 16384.
+        - step (int, optional): The step size between samples for detection. Defaults to 32.
+        - threshold (float, optional): The Z-score threshold to detect anomalies. Default is 3.0.
+        - scaler (Normalization, optional): Normalization method to apply to input data.
+          Default is MIN_MAX_ZERO_CENTERED.
+        - border_only (bool, optional): The detect anomalies are identified only when transitioning
+          from non-anomaly to anomaly. The consecutive anomalies are discarted. Default is True.
         """
         self.estimation_window_size = estimation_window_size
         self.step = step
-        self.name = f"Zscore Detector - {self.estimation_window_size} - {self.step}"
+        self.threshold = threshold
+        self.scaler = scaler
+        self.border_only = border_only
+        self.name = f"Zscore Detector - {self.estimation_window_size} - {self.step} - {self.threshold} - {self.scaler.name}"
 
-    def detect(self, input_data: np.array, threshold: float = 2, board_only: bool = True) -> typing.Tuple[typing.List[int], int]:
+    def detect(self, input_data: np.array) -> typing.Tuple[typing.List[int], int]:
         """
         Perform Z-score based anomaly detector on the given data.
 
         Parameters:
         - input_data (np.array): The input data array for detection.
-        - threshold (float, optional): The Z-score threshold to detect anomalies (default is 3.0).
-        - board_only (bool, optional): The detect anomalies are identified only when transitioning
-            from non-anomaly to anomaly. The consecutive anomalies are discarted (default is True).
 
         Returns:
         - np.array: An array of indices (center of the analysis window) where anomalies are
             detected.
         """
         anomalies = []
-        z_scoress = []
+        
+        if self.scaler:
+            input_data = self.scaler.apply(input_data)
+        
         for i in range(self.estimation_window_size + self.step,
                        len(input_data),
                        self.step):
@@ -45,50 +58,26 @@ class ZScoreDetector(Detector):
             std = np.std(estimation_window)
 
             sample_window = input_data[i-self.step:i]
-            z_scores = np.abs((np.median(sample_window) - mean) / std)
+            # z_scores = np.abs((np.median(sample_window) - mean) / std)
+            z_scores = np.abs((np.mean(sample_window) - mean) / std)
 
-            if z_scores > threshold:
+            if z_scores > self.threshold:
                 anomalies.append(i - self.step)
-
-            z_scoress.append(np.median(sample_window))
 
         anomalies = np.array(anomalies)
 
-        if board_only:
+        if self.border_only:
             if len(anomalies) > 1:
                 diffs = np.diff(anomalies)
                 to_keep = np.insert(diffs > self.step, 0, True)
-                print(f"to_keep: {to_keep}")
                 anomalies = anomalies[to_keep]
+                
+        # plt.plot(input_data)
+        # plt.scatter(anomalies, input_data[anomalies], color='red', marker='o', s=50, label='Anomalias', zorder=5)
+        # plt.savefig("Result/teste.png")
 
         return anomalies.tolist(), len(input_data) // self.step
     
-        # anomalies = []
-        # for i in range(self.estimation_window_size + self.step,
-        #             len(input_data),
-        #             self.step):
-
-        #     start_index = i - self.estimation_window_size - self.step
-
-        #     estimation_window = input_data[start_index:start_index + self.estimation_window_size]
-        #     mean = np.mean(estimation_window)
-        #     std = np.std(estimation_window)
-
-        #     sample_window = input_data[i - self.step:i]
-        #     z_score = np.abs((np.median(sample_window) - mean) / std)
-
-        #     if z_score > threshold:
-        #         anomalies.append(i - self.step)
-
-        # if board_only:
-        #     if len(anomalies) > 1:
-        #         diffs = np.diff(anomalies)
-        #         to_keep = np.insert(diffs > self.step, 0, True)
-        #         anomalies = anomalies[to_keep]
-
-        # return anomalies, len(input_data) // self.step
-    
-
 # Example usage:
 if __name__ == "__main__":
 
