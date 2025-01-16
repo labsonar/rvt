@@ -5,9 +5,9 @@ import shutil
 import argparse
 from datetime import timedelta
 
-import src.loader as loader
-import src.artifact as artifact
-import src.analysis as analysis
+import rvt.loader as loader
+import rvt.artifact as artifact
+import rvt.analysis as analysis
 
 if os.path.exists("Analysis"):
     shutil.rmtree("Analysis")

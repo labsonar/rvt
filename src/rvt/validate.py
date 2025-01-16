@@ -7,8 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from src import metric
-from src.detector import Detector
+import rvt.metric as metric
+from rvt.detector import Detector
 
 class Validate():
     """ Class representing validation data. """

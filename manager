@@ -115,6 +115,10 @@ case "$1" in
 			cd "$script_path/$sub/src"
 			pip install -e . --user
 		done
+
+		cd "$script_path/src"
+		pip install -e . --user
+		cd "$script_path"
 	;;
 
 	deploy)

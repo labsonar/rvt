@@ -8,13 +8,13 @@ import argparse
 import pandas as pd
 from scipy.io import wavfile
 
-from src.validate import Validate
-from src.metric import Metric
-from src.detector import Detector
-from src.detectors import energy, zscore, test
+from rvt.validate import Validate
+from rvt.metric import Metric
+from rvt.detector import Detector
+from rvt.detectors import energy, zscore, test
 
-DATA_PATH = "data/RVT/test_files"
-data = pd.read_csv("data/docs/test_files.csv")
+DATA_PATH = "./data/RVT/test_files"
+data = pd.read_csv("./data/docs/test_files.csv")
 
 FS = 8000
 

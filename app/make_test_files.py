@@ -4,12 +4,12 @@ from scipy.io import wavfile
 from scipy.signal import resample
 import os
 
-INPUT_DIR = "../data/RVT/raw_data/"
-OUTPUT_DIR = "../data/RVT/test_files"
+INPUT_DIR = "./data/RVT/raw_data/"
+OUTPUT_DIR = "./data/RVT/test_files"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-df = pd.read_csv("./test_files.csv", delimiter=",")
+df = pd.read_csv("./data/docs/test_files.csv", delimiter=",")
 
 for file_id in df['Test File'].unique():
     print(f"Processing Test File: {file_id}")

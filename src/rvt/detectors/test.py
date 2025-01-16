@@ -2,7 +2,7 @@
 import typing
 import numpy as np
 
-from src.detector import Detector
+from rvt.detector import Detector
 
 class TestDetector(Detector):
     """ Class representing a test detector. """

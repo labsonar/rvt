@@ -3,9 +3,9 @@ import typing
 import numpy as np
 from lps_sp.signal import Normalization
 
-from src import detector
+from rvt.detector import Detector
 
-class EnergyThresholdDetector(detector.Detector):
+class EnergyThresholdDetector(Detector):
     """ Class representing an energy threshold detector. """
 
     def __init__(self, threshold: float = 75, mean_energy_window_size: int = 1400, \

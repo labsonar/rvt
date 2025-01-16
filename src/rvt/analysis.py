@@ -10,8 +10,8 @@ import scipy.io
 import lps_sp.acoustical.analysis as lps_analysis
 import lps_sp.acoustical.broadband as lps_bb
 import lps_sp.signal as lps_signal
-from artifact import ArtifactManager
-from loader import DataLoader
+from rvt.artifact import ArtifactManager
+from rvt.loader import DataLoader
 
 class AudioAnalysis:
     """ Class for audio analysis operations.

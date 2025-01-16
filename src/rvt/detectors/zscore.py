@@ -1,9 +1,9 @@
 import typing
 import numpy as np
 import matplotlib.pyplot as plt
-from src.detector import Detector
 
 import lps_sp.signal as lps_signal
+from rvt.detector import Detector
 
 class ZScoreDetector(Detector):
     """

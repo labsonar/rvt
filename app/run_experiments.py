@@ -11,7 +11,8 @@ window_sizes = [4000]
 steps = [20]
 thresholds = [2]
 
-# Definir os arquivos utilizados (1 a 26, exceto 9, 10 e 26 - sao arquivos para teste, dois EX-SUP e um GAE)
+# Definir os arquivos utilizados (1 a 26, exceto 9, 10 e 26 - sao arquivos para teste,
+#   dois EX-SUP e um GAE)
 all_files = list(range(1, 27))
 excluded_files = [9, 10, 26]
 test_files = [f for f in all_files if f not in excluded_files]
