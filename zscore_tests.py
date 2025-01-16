@@ -17,16 +17,12 @@ DATA_PATH = "data/RVT/test_files"
 data = pd.read_csv("data/docs/test_files.csv")
 
 FS = 8000
-detectores: typing.List[Detector] = [
-    energy.EnergyThresholdDetector(),
-    zscore.ZScoreDetector(400, 100, 3)
-]
 
 parser = argparse.ArgumentParser(description="App made to test detectors.")
 
 parser.add_argument("-f", "--files", type=int, nargs="*", \
         default=data["Test File ID"].unique(),
-        help="Files to be analysed. Defaulto to all.")
+        help="Files to be analysed. Defaults to all.")
 
 parser.add_argument("-m", "--metrics", type=int, nargs="*", \
         default=[i for i in range(len(Metric))],
@@ -35,27 +31,43 @@ parser.add_argument("-m", "--metrics", type=int, nargs="*", \
             1 - False Alarm Rate\
             2 - False Discovery Rate\
             3 - Precision\
-            Default to all.")
+            Defaults to all.")
 
 parser.add_argument("-d", "--detector", type=int, nargs="*", \
-        default=[i for i in range(len(detectores))], \
+        default=[i for i in range(2)], \
         help="Detectors to be analysed:\
             0 - Energy Threshold Detector\
             1 - Zscore Detector\
-            Default to all.")
+            Defaults to all.")
+
+parser.add_argument("-z", "--zscore_params", type=float, nargs=3,
+                    default=[20, 4, 2.5],
+                    help="Z-Score Detector Parameters: window_size step threshold.")
 
 args = parser.parse_args()
+
+detectores: typing.List[Detector] = [
+    energy.EnergyThresholdDetector(),
+    zscore.ZScoreDetector(int(args.zscore_params[0]),
+                          int(args.zscore_params[1]), args.zscore_params[2])
+]
+
+params_dict = {
+    "window_size": int(args.zscore_params[0]),
+    "step": int(args.zscore_params[1]),
+    "threshold": float(args.zscore_params[2])
+}
 
 detectores = [detectores[i] for i in args.detector]
 metrics_list = [Metric(i) for i in args.metrics]
 
-if os.path.exists("Result"):
-    shutil.rmtree("Result")
-os.mkdir("Result")
+# if os.path.exists("Result"):
+#     shutil.rmtree("Result")
+
+if not os.path.exists("Result"):
+    os.makedirs("Result")
 
 validation = Validate(args.files, detectores, "Result")
-
-print(len(args.files))
 
 for file in args.files:
 
@@ -84,4 +96,4 @@ for file in args.files:
 for detector in detectores:
     validation.confusion_matrix(detector.name)
 
-print(validation.build_table(metrics_list))
+print(validation.build_table(metrics_list, params_dict))
