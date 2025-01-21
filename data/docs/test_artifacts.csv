@@ -1,4 +1,4 @@
-Test File ID,Type of exercise,Artifact ID,Caracterization,Bouy,Raw File,Offset no raw,Raw offset on Test File,Offset
+Test File,Type of exercise,Artifact ID,Caracterization,Bouy,Raw File,Offset no raw,Raw offset on Test File,Offset
 1,EX-SUP,0,Tiro 1,1,12_16_04_00023.wav,00:04:35.000,00:00:00.000,00:04:35.000
 1,EX-SUP,1,Tiro 2,1,12_16_15_00025.wav,00:02:40.755,00:10:00.000,00:12:40.755
 1,EX-SUP,2,Ricochete,1,12_16_15_00025.wav,00:02:55.034,00:10:00.000,00:12:55.034

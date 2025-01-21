@@ -23,12 +23,21 @@ def create_energy_config(params):
 class EnergyThresholdDetector(Detector):
     """ Class representing an energy threshold detector. """
 
+<<<<<<< HEAD
     def __init__(self, config: EnergyThresholdConfig = EnergyThresholdConfig(),
                  scaler: Normalization = Normalization(1)):
         self.__threshold = config.threshold
         self.__mean_energy_window_size = round(config.mean_energy_window_size)
         self.__instant_window_size = round(config.instant_window_size)
         self.__scaler = scaler
+=======
+    def __init__(self, threshold: float = 10, mean_energy_window_size: int = 32000, \
+            instant_window_size: int = 800, scaler: Normalization = Normalization(1)):
+        self.__threshold: float = threshold
+        self.__mean_energy_window_size: int = round(mean_energy_window_size)
+        self.__instant_window_size: int = round(instant_window_size)
+        self.__scaler: Normalization = scaler
+>>>>>>> 22bbb097ab3dc383d7a1a086d805a9987b054be2
 
         if self.__instant_window_size >= self.__mean_energy_window_size:
             # TODO See if this print is okay
