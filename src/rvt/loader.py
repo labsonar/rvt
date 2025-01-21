@@ -9,7 +9,7 @@ from scipy.io import wavfile # TODO Nao sei se tem alguma biblioteca no Lps_util
 import lps_utils.utils as lps_utils
 from lps_sp.signal import decimate
 
-class DataLoader():
+class DataLoader:
     """ Class representing the RVT audio system. """
 
     def __init__(self, base_path="data/RVT/raw_data") -> None:
@@ -152,7 +152,7 @@ class DataLoader():
             return [int((timex - start).total_seconds() * framerate) for timex in time ]
 
 if __name__ == "__main__":
-    data = DataLoader()
+    data = DataLoader("data/RVT/test_files")
 
     for buoy_id_, file_list_ in data.file_dict.items():
         print(buoy_id_)

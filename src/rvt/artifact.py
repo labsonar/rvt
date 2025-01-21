@@ -264,7 +264,7 @@ class ArtifactManager():
 
 if __name__ == "__main__":
 
-    manager = ArtifactManager()
+    manager = ArtifactManager("data/docs/test_artifacts.csv")
 
     for id_artifact in manager:
         print(f"Artifact: {id_artifact}")

@@ -8,8 +8,8 @@ from rvt.detector import Detector
 class EnergyThresholdDetector(Detector):
     """ Class representing an energy threshold detector. """
 
-    def __init__(self, threshold: float = 75, mean_energy_window_size: int = 1400, \
-            instant_window_size: int = 10, scaler: Normalization = Normalization(1)):
+    def __init__(self, threshold: float = 10, mean_energy_window_size: int = 32000, \
+            instant_window_size: int = 800, scaler: Normalization = Normalization(1)):
         self.__threshold: float = threshold
         self.__mean_energy_window_size: int = round(mean_energy_window_size)
         self.__instant_window_size: int = round(instant_window_size)
