@@ -14,7 +14,7 @@ from rvt.detector import Detector
 from rvt.detectors import energy, zscore, test
 
 DATA_PATH = "./data/RVT/test_files"
-data = pd.read_csv("./data/docs/test_files.csv")
+data = pd.read_csv("./data/docs/test_artifacts.csv")
 
 FS = 8000
 
@@ -33,33 +33,38 @@ parser.add_argument("-m", "--metrics", type=int, nargs="*", \
             3 - Precision\
             Defaults to all.")
 
-parser.add_argument("-d", "--detector", type=int, nargs="*", \
-        default=[i for i in range(2)], \
-        help="Detectors to be analysed:\
+parser.add_argument("-d", "--detector", type=int, default=0,
+        help="Detector to be analysed:\
             0 - Energy Threshold Detector\
             1 - Zscore Detector\
             Defaults to all.")
 
-parser.add_argument("-z", "--zscore_params", type=float, nargs=3,
-                    default=[20, 4, 2.5],
+parser.add_argument("-p", "--params", type=float, nargs='*',
                     help="Z-Score Detector Parameters: window_size step threshold.")
 
 args = parser.parse_args()
 
-detectores: typing.List[Detector] = [
-    energy.EnergyThresholdDetector(),
-    zscore.ZScoreDetector(int(args.zscore_params[0]),
-                          int(args.zscore_params[1]), args.zscore_params[2])
-]
-
-params_dict = {
-    "window_size": int(args.zscore_params[0]),
-    "step": int(args.zscore_params[1]),
-    "threshold": float(args.zscore_params[2])
+detector_map = {
+    0: (energy.EnergyThresholdDetector, energy.create_energy_config),
+    1: (zscore.ZScoreDetector, zscore.create_zscore_config)
 }
 
-detectores = [detectores[i] for i in args.detector]
+detector_class, config_creator = detector_map[args.detector]
+config = config_creator(args.params)
+detector = detector_class(config)
+
+params_dict = {
+    config.params_name_list[i]: args.params[i] for i in range(len(args.params))
+}
+
+detectores = [detector]
 metrics_list = [Metric(i) for i in args.metrics]
+
+if args.detector == 0:
+    csv_name = "energy_results.csv"
+
+elif args.detector == 1:
+    csv_name = "zscore_results.csv"
 
 # if os.path.exists("Result"):
 #     shutil.rmtree("Result")
@@ -83,7 +88,7 @@ for file in args.files:
         expected.append(int(delta*fs))
 
     for jndex, detector in enumerate(detectores):
-        print(f"\tTesting {jndex+1}° detector - {detector.name}", end=": ", flush=True)
+        print(f"\tTesting {detector.name}", end=": ", flush=True)
         # 0.03 - tempo equivalente a 50 jardas
         detector_start = time.time()
         cm = detector.evaluate(input_data, expected, 0.03*fs)
@@ -96,4 +101,4 @@ for file in args.files:
 for detector in detectores:
     validation.confusion_matrix(detector.name)
 
-print(validation.build_table(metrics_list, params_dict))
+print(validation.build_table(metrics_list, params_dict, detector.name.split()[0]))

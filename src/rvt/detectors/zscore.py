@@ -1,9 +1,32 @@
 import typing
 import numpy as np
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 
 import lps_sp.signal as lps_signal
 from rvt.detector import Detector
+
+@dataclass
+class ZScoreConfig():
+  """
+  Parameters:
+  - estimation_window_size (int, optional): The size of the moving window to calculate mean
+    and standard deviation. Defaults to 800.
+  - step (int, optional): The step size between samples for detection. Defaults to 20.
+  - threshold (float, optional): The Z-score threshold to detect anomalies. Default is 3.0.
+  - params_name_list (list, optional): List of names for ZScore Detector parameters.
+  """
+  estimation_window_size: int = 800
+  step: int = 20
+  threshold: float = 3
+  params_name_list: list = [
+    "Window Size",
+    "Step",
+    "Threshold"
+  ]
+  
+def create_zscore_config(params):
+    return ZScoreConfig(*params) if params else ZScoreConfig()
 
 class ZScoreDetector(Detector):
     """
@@ -11,22 +34,21 @@ class ZScoreDetector(Detector):
     Detects anomalies in time series data using Z-scores.
     """
 
-    def __init__(self, estimation_window_size: int = 16384, step: int = 32, threshold: float = 3,
-                 scaler: lps_signal.Normalization = lps_signal.Normalization(1), border_only: bool = True):
+    def __init__(self, config: ZScoreConfig = ZScoreConfig(),
+                 scaler: lps_signal.Normalization = lps_signal.Normalization(1),
+                 border_only: bool = True):
         """
         Parameters:
-        - estimation_window_size (int, optional): The size of the moving window to calculate mean
-          and standard deviation. Defaults to 16384.
-        - step (int, optional): The step size between samples for detection. Defaults to 32.
-        - threshold (float, optional): The Z-score threshold to detect anomalies. Default is 3.0.
+        - config (ZScoreConfig): config dataclass with detector parameters, including
+          window size, step size and threshold.
         - scaler (Normalization, optional): Normalization method to apply to input data.
           Default is MIN_MAX_ZERO_CENTERED.
         - border_only (bool, optional): The detect anomalies are identified only when transitioning
           from non-anomaly to anomaly. The consecutive anomalies are discarted. Default is True.
         """
-        self.estimation_window_size = estimation_window_size
-        self.step = step
-        self.threshold = threshold
+        self.estimation_window_size = int(config.estimation_window_size)
+        self.step = int(config.step)
+        self.threshold = config.threshold
         self.scaler = scaler
         self.border_only = border_only
         self.name = f"Zscore Detector - {self.estimation_window_size} - {self.step} - {self.threshold} - {self.scaler.name}"

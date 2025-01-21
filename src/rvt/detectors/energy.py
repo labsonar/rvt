@@ -1,26 +1,41 @@
 """ Module providing energy threshold detector. """
 import typing
 import numpy as np
+from dataclasses import dataclass
 from lps_sp.signal import Normalization
 
 from rvt.detector import Detector
 
+@dataclass
+class EnergyThresholdConfig():
+    mean_energy_window_size: int = 32000
+    instant_window_size: int = 800
+    threshold: float = 10
+    params_name_list = [
+    "Mean Energy Window Size",
+    "Instant Window Size",
+    "Threshold"
+  ]
+    
+def create_energy_config(params):
+    return EnergyThresholdConfig(*params) if params else EnergyThresholdConfig()
+
 class EnergyThresholdDetector(Detector):
     """ Class representing an energy threshold detector. """
 
-    def __init__(self, threshold: float = 75, mean_energy_window_size: int = 1400, \
-            instant_window_size: int = 10, scaler: Normalization = Normalization(1)):
-        self.__threshold: float = threshold
-        self.__mean_energy_window_size: int = round(mean_energy_window_size)
-        self.__instant_window_size: int = round(instant_window_size)
-        self.__scaler: Normalization = scaler
+    def __init__(self, config: EnergyThresholdConfig = EnergyThresholdConfig(),
+                 scaler: Normalization = Normalization(1)):
+        self.__threshold = config.threshold
+        self.__mean_energy_window_size = round(config.mean_energy_window_size)
+        self.__instant_window_size = round(config.instant_window_size)
+        self.__scaler = scaler
 
         if self.__instant_window_size >= self.__mean_energy_window_size:
             # TODO See if this print is okay
             raise ValueError(f"Instant window {self.__instant_window_size} \
                             greater or equal mean energy window {self.__mean_energy_window_size}")
 
-        self.name = f"Energy Threshold Detector {self.__threshold} - {self.__mean_energy_window_size} - {self.__instant_window_size} - {self.__scaler.name}"
+        self.name = f"Energy Threshold Detector - {self.__threshold} - {self.__mean_energy_window_size} - {self.__instant_window_size} - {self.__scaler.name}"
 
     def detect(self, input_data: np.array) -> typing.Tuple[typing.List[int], int]:
         """
