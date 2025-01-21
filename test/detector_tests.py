@@ -7,6 +7,7 @@ import typing
 import argparse
 import pandas as pd
 from scipy.io import wavfile
+from concurrent.futures import ThreadPoolExecutor
 
 from rvt.validate import Validate
 from rvt.metric import Metric
@@ -21,7 +22,7 @@ FS = 8000
 parser = argparse.ArgumentParser(description="App made to test detectors.")
 
 parser.add_argument("-f", "--files", type=int, nargs="*", \
-        default=data["Test File ID"].unique(),
+        default=data["Test File"].unique(),
         help="Files to be analysed. Defaults to all.")
 
 parser.add_argument("-m", "--metrics", type=int, nargs="*", \
@@ -60,12 +61,6 @@ params_dict = {
 detectores = [detector]
 metrics_list = [Metric(i) for i in args.metrics]
 
-if args.detector == 0:
-    csv_name = "energy_results.csv"
-
-elif args.detector == 1:
-    csv_name = "zscore_results.csv"
-
 # if os.path.exists("Result"):
 #     shutil.rmtree("Result")
 
@@ -83,7 +78,7 @@ for file in args.files:
     fs, input_data = wavfile.read(filename)
 
     expected = []
-    for offset in data[data["Test File ID"] == file]["Offset"]:
+    for offset in data[data["Test File"] == file]["Offset"]:
         delta = pd.Timedelta(offset).total_seconds()
         expected.append(int(delta*fs))
 
@@ -97,6 +92,33 @@ for file in args.files:
         validation.accumulate(detector.name, file, cm)
 
     print(f"Finished reading {file}.wav in {time.time()-start :.1f} seconds")
+
+# TODO usar o ThreadPoolExecutor esta causando problemas pois cada thread acessa a mesma instancia do validate
+# def process_file(file: int):
+#     """Função para processar um único arquivo."""
+#     start = time.time()
+#     filename = os.path.join(DATA_PATH, f"{file}.wav")
+#     print(f"\nReading {file}.wav:")
+#     fs, input_data = wavfile.read(filename)
+
+#     expected = []
+#     for offset in data[data["Test File"] == file]["Offset"]:
+#         delta = pd.Timedelta(offset).total_seconds()
+#         expected.append(int(delta * fs))
+
+#     for jndex, detector in enumerate(detectores):
+#         print(f"\tTesting {detector.name}", end=": ", flush=True)
+#         detector_start = time.time()
+#         cm = detector.evaluate(input_data, expected, 0.03 * fs)
+#         print(f"{time.time() - detector_start :.1f} seconds")
+#         validation.accumulate(detector.name, file, cm)
+
+#     print(f"Finished reading {file}.wav in {time.time() - start :.1f} seconds")
+
+
+# # Paralelização usando ThreadPoolExecutor
+# with ThreadPoolExecutor() as executor:
+#     executor.map(process_file, args.files)
 
 for detector in detectores:
     validation.confusion_matrix(detector.name)

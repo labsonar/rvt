@@ -1,7 +1,7 @@
 import typing
 import numpy as np
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import lps_sp.signal as lps_signal
 from rvt.detector import Detector
@@ -19,11 +19,11 @@ class ZScoreConfig():
   estimation_window_size: int = 800
   step: int = 20
   threshold: float = 3
-  params_name_list: list = [
-    "Window Size",
-    "Step",
-    "Threshold"
-  ]
+  params_name_list: list = field(default_factory=lambda: [
+        "Window Size",
+        "Step",
+        "Threshold"
+    ])
   
 def create_zscore_config(params):
     return ZScoreConfig(*params) if params else ZScoreConfig()

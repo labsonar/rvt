@@ -45,29 +45,21 @@ class Validate():
 
         self.data.loc[detector, file] = cm
 
-<<<<<<< HEAD
     def build_table(self, metrics_list: typing.List[metric.Metric],
                     params: dict, detector_tag: str = 'detector') -> pd.DataFrame:
-=======
-    def build_table(self, metrics_list: typing.List[metric.Metric]) -> pd.DataFrame:
->>>>>>> 22bbb097ab3dc383d7a1a086d805a9987b054be2
         """ Build table to be shown or saved.
 
         Args:
             metrics_list (typing.List[metric.Metric]): List of metrics on table.
-<<<<<<< HEAD
             params (dict): dictionary of detector parameters.
             detector_tag (str): detector tag for csv name.
-=======
->>>>>>> 22bbb097ab3dc383d7a1a086d805a9987b054be2
 
         Returns:
             pd.DataFrame: Table.
         """
-<<<<<<< HEAD
         
         # Modificado para colocar os parametros como colunas da tabela, e
-        # montar a tabela com cada rodagem feita no detector.
+        # montar a tabela com os testes de cada conjunto de parametros.
         path = os.path.join(self.__root, f"{detector_tag}_results.csv")
 
         if os.path.exists(path):
@@ -76,7 +68,7 @@ class Validate():
             table = pd.DataFrame()
 
         new_row = {"detector": ""}
-        new_row.update(params)  # Adiciona todos os parâmetros dinamicamente
+        new_row.update(params)
 
         for detector in self.data.index:
             for metric_ in metrics_list:
@@ -109,61 +101,9 @@ class Validate():
         table = table[ordered_columns]
 
         table.to_csv(path, index=False)
-=======
-
-        table = pd.DataFrame()
-
-        for detector in self.data.index:
-            for metric_ in metrics_list:
-                values = [metric_.apply(matrix)*100 for matrix in self.data.loc[detector, :]]
-                table.loc[detector, str(metric_)] = \
-                    f"{np.mean(values):.2f} +- {np.std(values):.2f}%"
-
-        path = os.path.join(self.__root, "table.csv")
-        table.to_csv(path)
->>>>>>> 22bbb097ab3dc383d7a1a086d805a9987b054be2
         
         return table
         
-        # Modificado para colocar os parametros como colunas da tabela, e
-        # montar a tabela com cada rodagem feita no detector.
-        # path = os.path.join(self.__root, "zscore_table5.csv")
-
-        # if os.path.exists(path):
-        #     table = pd.read_csv(path)
-        # else:
-        #     table = pd.DataFrame()
-
-        # new_row = {
-        #     "detector": [],
-        #     "window_size": params["window_size"],
-        #     "step": params["step"],
-        #     "threshold": params["threshold"]
-        # }
-
-        # for detector in self.data.index:
-        #     for metric_ in metrics_list:
-        #         values = [metric_.apply(matrix) * 100 for matrix in self.data.loc[detector, :]]
-        #         new_row[str(metric_)] = f"{np.mean(values):.2f} +- {np.std(values):.2f}%"
-        #         new_row["detector"] = detector.split(" - ")[0]
-
-        # if not table.empty:
-        #     is_duplicate = (
-        #         (table["detector"] == new_row["detector"]) &
-        #         (table["window_size"] == new_row["window_size"]) &
-        #         (table["step"] == new_row["step"]) &
-        #         (table["threshold"] == new_row["threshold"])
-        #     ).any()
-            
-        #     if not is_duplicate:
-        #         table = pd.concat([table, pd.DataFrame([new_row])], ignore_index=True)
-        # else:
-        #     table = pd.DataFrame([new_row])
-
-        # table.to_csv(path, index=False)
-        
-        # return table
-
     def confusion_matrix(self, detector: str) -> None:
         """Save an acumulated confusion matrix of all data.
 
