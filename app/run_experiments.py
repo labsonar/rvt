@@ -1,11 +1,11 @@
-"Scrip for running experiments on Z-Score anomaly detector."
+"Script for running experiments on Z-Score anomaly detector."
 
 import subprocess
 from itertools import product
 
-window_sizes = [20, 50, 100, 400, 800]
-steps = [20, 40, 100]
-thresholds = [2.5, 3.0, 4.0]
+window_sizes = [800]
+steps = [20]
+thresholds = [3.0]
 
 # Definir os arquivos utilizados (1 a 26, exceto 9, 10 e 26 - sao arquivos para teste,
 #   dois EX-SUP e um GAE)
@@ -27,7 +27,8 @@ for window_size, step, threshold in param_combinations:
         "python", test_script,
         "-f", *map(str, test_files),
         "-d", "1",
-        "-p", str(window_size), str(step), str(threshold)
+        "-p", "0",
+        "--params", str(window_size), str(step), str(threshold)
     ]
 
     subprocess.run(cmd, check=True)
