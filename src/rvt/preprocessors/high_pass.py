@@ -2,25 +2,38 @@
 
 import typing
 import numpy as np
+import scipy.signal as signal
 
 from rvt.preprocessing import PreProcessor
 
 class HighPass(PreProcessor):
 
-    def __init__(self, cut_freq: int = 2000):
-        self.cut_freq = cut_freq
+    def __init__(self, cutoff_freq: int = 2000, order: int = 1):
+        """ 
+        High Pass Filter
+
+        Args:
+            cutoff_freq (int): filter cutoff frequency. Defaults to 2000.
+            order (int): order of the filter. Defaults to 1
+        """
+        
+        self.cutoff_freq = cutoff_freq
+        self.order = order
 
     def process(self, input_data: np.ndarray, fs: int) -> typing.Tuple[np.ndarray, int]:
-        """ Transform input data to Filter or Normalize data.
+        """ Filters input data.
 
         Args:
             input_data (np.ndarray): Audio data.
-            fs (int: Audio sampling rate.
+            fs (int): Audio sampling rate.
+            order : order of the filter.
 
         Returns:
-            typing.Tuple[np.ndarray, int]: Transformed Audio and Sampling rate.
+            typing.Tuple[np.ndarray, int]: Filtered Audio and Sampling rate.
         """
-
-        data = np.fft.rfft(input_data)
-        data = data[self.cut_freq:]
-        return np.fft.ifft(data), fs
+        
+        normalized_cutoff = self.cutoff_freq / (fs / 2.0)
+        b, a = signal.butter(self.order, normalized_cutoff, btype='high', analog=False)
+        filtered_data = signal.filtfilt(b, a, input_data)
+        
+        return filtered_data, fs

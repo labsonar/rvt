@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(description="App made to test detectors.")
 
 parser.add_argument("-f", "--files", type=int, nargs="*", \
         default=manager.data["Test File"].unique().tolist(),
-        help="Files to be analysed. Defaulto to all.")
+        help="Files to be analysed. Default to all.")
 
 parser.add_argument("-m", "--metrics", type=int, nargs="*", \
         default=[i for i in range(len(Metric))],

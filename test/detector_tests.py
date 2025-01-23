@@ -12,13 +12,14 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from rvt.validate import Validate
 from rvt.metric import Metric
 from rvt.detector import Detector
-from rvt.detectors import energy, zscore, test
+from rvt.detectors import energy, zscore, hypothesis, test
 from rvt.preprocessing import PreProcessor, ProcessorPipeline
 from rvt.preprocessors import high_pass
 
 DATA_PATH = "./data/RVT/test_files"
 data = pd.read_csv("./data/docs/test_artifacts.csv")
 
+# TODO generalizar frequencia de corte do filtro
 pre_processors: typing.List[PreProcessor] = [
     high_pass.HighPass(1000)
 ]
@@ -58,7 +59,7 @@ args = parser.parse_args()
 
 detector_map = {
     0: (energy.EnergyThresholdDetector, energy.create_energy_config),
-    1: (zscore.ZScoreDetector, zscore.create_zscore_config)
+    1: (zscore.ZScoreDetector, zscore.create_zscore_config),
 }
 
 detector_class, config_creator = detector_map[args.detector]
@@ -110,7 +111,7 @@ def process_file(file: int):
         # print(f"Finished reading {file}.wav in {time.time() - start :.1f} seconds")
 
         return cm_dict
-    
+
     except Exception as e:
         print(f"Erro ao processar o arquivo {file}: {e}")
         return None
