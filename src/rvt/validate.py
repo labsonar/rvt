@@ -60,7 +60,7 @@ class Validate():
         
         # Modificado para colocar os parametros como colunas da tabela, e
         # montar a tabela com os testes de cada conjunto de parametros.
-        path = os.path.join(self.__root, f"{detector_tag}_results.csv")
+        path = os.path.join(self.__root, f"{detector_tag}_results_by_file.csv")
 
         if os.path.exists(path):
             table = pd.read_csv(path)
@@ -71,9 +71,19 @@ class Validate():
         new_row.update(params)
 
         for detector in self.data.index:
+            # sum_matrix = np.zeros((2, 2))
+            
+            # for matrix in self.data.loc[detector, :]:
+            #     print(f"Matriz final: {sum_matrix.shape}")
+            #     print(f"Matriz a ser somada: {matrix.shape}")
+            #     sum_matrix += matrix
+            
             for metric_ in metrics_list:
+                # print(f"Matriz final: {sum_matrix}")
+                # value = metric_.apply(sum_matrix) * 100
                 values = [metric_.apply(matrix) * 100 for matrix in self.data.loc[detector, :]]
                 new_row[str(metric_)] = f"{np.mean(values):.2f} +- {np.std(values):.2f}%"
+                # new_row[str(metric_)] = f"{value:.2f}"
                 new_row["detector"] = detector.split(" - ")[0]
                 
         for col in new_row.keys():
