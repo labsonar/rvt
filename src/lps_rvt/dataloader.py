@@ -10,8 +10,11 @@ import lps_rvt.types as rvt
 
 class DataLoader:
     """ Class to acess and filter the test data"""
-    def __init__(self, csv_path: str = "./data/docs/test_files_description.csv"):
-        self.data = pd.read_csv(csv_path)
+    def __init__(self,
+                 description_filename: str = "./data/docs/test_files_description.csv",
+                 artifacts_filename='data/RVT/test_artifacts.csv'):
+        self.description = pd.read_csv(description_filename)
+        self.artifacts = pd.read_csv(artifacts_filename)
 
     def get_files(self,
                   file_types: typing.Optional[typing.List[rvt.Ammunition]] = None,
@@ -31,7 +34,7 @@ class DataLoader:
             typing.List[int]: list of file IDs with the specified restrictions
         """
 
-        df_filtered = self.data
+        df_filtered = self.description
         if file_types:
             df_filtered = df_filtered[df_filtered["Type"].isin([ft.value for ft in file_types])]
         if buoys:
@@ -40,7 +43,7 @@ class DataLoader:
             df_filtered = df_filtered[df_filtered["Subset"].isin([st.value for st in subsets])]
         return df_filtered["File"].tolist()
 
-    def get_data (self, file_id: int, frequency: int = 8000, path='data/RVT/test_files'):
+    def get_data (self, file_id: int, fs: int = 8000, path='data/RVT/test_files'):
         """Gets the audio data from an specific file.
 
         Args:
@@ -53,12 +56,21 @@ class DataLoader:
             audio_data (ndarray): audio data.
 
         """
-        if frequency == 8000:
+        if fs == 8000:
             rel_filename = f"{file_id}.wav"
         else:
-            rel_filename = f"{file_id}-{frequency}.wav"
+            rel_filename = f"{file_id}-{fs}.wav"
 
         audio_path = os.path.join(path, rel_filename)
         fs, audio_data = scipy.wavfile.read(audio_path)
 
         return fs, audio_data
+
+    def get_excepted_detections(self, file_id: int, fs: int):
+
+        expected = []
+        for offset in self.artifacts[self.artifacts["Test File ID"] == file_id]["Offset"]:
+            delta = pd.Timedelta(offset).total_seconds()
+            expected.append(int(delta * fs))
+
+        return expected
