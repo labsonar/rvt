@@ -16,7 +16,7 @@ import setuptools
 
 # Setup configuration for the package
 setuptools.setup(
-    name="rvt",
+    name="lps_rvt",
     version='0.0.1',
     packages=setuptools.find_packages(),
     description='A simple Python project setup example.',
