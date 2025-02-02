@@ -5,6 +5,7 @@ import typing
 
 import pandas as pd
 import scipy.io as scipy
+import streamlit as st
 
 import lps_rvt.types as rvt
 
@@ -12,7 +13,7 @@ class DataLoader:
     """ Class to acess and filter the test data"""
     def __init__(self,
                  description_filename: str = "./data/docs/test_files_description.csv",
-                 artifacts_filename='data/RVT/test_artifacts.csv'):
+                 artifacts_filename='data/docs/test_artifacts.csv'):
         self.description = pd.read_csv(description_filename)
         self.artifacts = pd.read_csv(artifacts_filename)
 
