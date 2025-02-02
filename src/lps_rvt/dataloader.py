@@ -44,7 +44,7 @@ class DataLoader:
             df_filtered = df_filtered[df_filtered["Subset"].isin([st.value for st in subsets])]
         return df_filtered["File"].tolist()
 
-    def get_data (self, file_id: int, fs: int = 8000, path='data/RVT/test_files'):
+    def get_data (self, file_id: int, fs: int = 8000, path='data/test_files'):
         """Gets the audio data from an specific file.
 
         Args:
@@ -67,11 +67,18 @@ class DataLoader:
 
         return fs, audio_data
 
-    def get_excepted_detections(self, file_id: int, fs: int):
+    def get_critical_points(self, file_id: int, fs: int):
 
-        expected = []
-        for offset in self.artifacts[self.artifacts["Test File ID"] == file_id]["Offset"]:
-            delta = pd.Timedelta(offset).total_seconds()
-            expected.append(int(delta * fs))
+        expected_detections = []
+        expected_rebound = []
 
-        return expected
+        artifacts_filtered = self.artifacts[self.artifacts["Test File ID"] == file_id]
+
+        for _, artifact in artifacts_filtered.iterrows():
+            delta = pd.Timedelta(f"00:{artifact['Offset']}").total_seconds()
+            if "Tiro" in artifact["Caracterization"]:
+                expected_detections.append(int(delta * fs))
+            else:
+                expected_rebound.append(int(delta * fs))
+
+        return expected_detections, expected_rebound

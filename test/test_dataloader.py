@@ -15,9 +15,11 @@ if __name__ == "__main__":
                         help="Filter by subset types.")
     args = parser.parse_args()
 
-    file_types = [lps_rvt.types.Ammunition[t] for t in args.types] if args.types else None
+    file_types = [lps_rvt.types.Ammunition[t] for t in args.ammunition] \
+                        if args.ammunition else None
     buoys = args.buoys if args.buoys else None
-    subsets = [lps_rvt.types.Subset[s] for s in args.subsets] if args.subsets else None
+    subsets = [lps_rvt.types.Subset[s] for s in args.subsets] \
+                        if args.subsets else None
 
     loader = lps_rvt.dataloader.DataLoader()
     selected_files = loader.get_files(file_types, buoys, subsets)

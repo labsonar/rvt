@@ -24,26 +24,37 @@ class Detector(abc.ABC):
 
     @staticmethod
     def evaluate(expected_detections: typing.List[int],
+                 expected_rebounds: typing.List[int],
                  samples_to_check: typing.List[int],
                  detect_samples: typing.List[int],
                  tolerance_before: int,
                  tolerance_after: int) -> np.ndarray:
 
         expected_detections = set(expected_detections)
+        expected_rebounds = set(expected_rebounds)
         detect_samples = set(detect_samples)
 
-        expected_ranges = []
+        detection_ranges = []
         for d in expected_detections:
-            expected_ranges.append(set(range(d - tolerance_before, d + tolerance_after + 1)))
+            detection_ranges.append(set(range(d - tolerance_before, d + tolerance_after + 1)))
 
         tp = 0
-        undetected_expected = expected_detections.copy()
+        undetected_expected = detect_samples.copy()
 
-        for expected_range in expected_ranges:
+        for expected_range in detection_ranges:
             detected = any(d in expected_range for d in detect_samples)
             if detected:
                 tp += 1
                 undetected_expected -= expected_range
+
+        rebound_ranges = []
+        for d in expected_rebounds:
+            rebound_ranges.append(set(range(d - tolerance_before, d + tolerance_after + 1)))
+
+        for rebound_range in rebound_ranges:
+            rebound_detected = any(d in rebound_range for d in undetected_expected)
+            if rebound_detected:
+                undetected_expected -= rebound_range
 
         fp = len(undetected_expected)
 
@@ -54,7 +65,7 @@ class Detector(abc.ABC):
         confusion_matrix = [[tn,fp],
                             [fn,tp]]
 
-        return confusion_matrix
+        return np.array(confusion_matrix, dtype=np.int32)
 
 
 class ProcessingPipeline:
@@ -69,7 +80,7 @@ class ProcessingPipeline:
 
     def process_file(self, file_id: int, result: dict):
         fs, data = self.loader.get_data(file_id)
-        expected = self.loader.get_excepted_detections(file_id, fs)
+        expected_detections, expected_rebound = self.loader.get_critical_points(file_id, fs)
 
         for preprocessor in self.preprocessors:
             fs, data = preprocessor.process(fs, data)
@@ -82,7 +93,7 @@ class ProcessingPipeline:
 
         for detector in self.detectors:
             detections = detector.detect(data, current_samples_to_check)
-            evaluation = detector.evaluate(expected, samples_to_check, detections,
+            evaluation = detector.evaluate(expected_detections, samples_to_check, detections,
                                            tolerance_before=self.tolerance_before,
                                            tolerance_after=self.tolerance_after)
             detector_results[str(detector)] = {
