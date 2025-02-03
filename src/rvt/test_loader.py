@@ -1,3 +1,4 @@
+""" Module providing Dataloader to manage the training files. """
 import typing
 import os
 from scipy.io import wavfile
