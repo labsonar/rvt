@@ -1,9 +1,9 @@
 import streamlit as st
-import plotly.graph_objs as go
-import scipy.signal as scipy
 
-import lps_rvt.dataloader as rvt_loader
 import lps_rvt.types as rvt
+import lps_rvt.dataloader as rvt_loader
+import lps_rvt.pipeline as rvt_pipeline
+import lps_rvt.preprocessing as rvt_preprocessing
 
 class Homepage:
     def __init__(self):
@@ -32,46 +32,15 @@ class Homepage:
 
         return self.loader.get_files(file_types, buoys, subsets)
 
-    def plot_data(self, file_id):
-        """Generates a Plotly plot with the data"""
-        fs, data = self.loader.get_data(file_id)
+    def process(self, selected_files, preprocessors):
+        pipeline = rvt_pipeline.ProcessingPipeline(preprocessors, [])
+        result_dict = pipeline.apply(selected_files)
 
-        num_samples = 400000
-        data_resampled = scipy.resample(data, num_samples)
+        for _, result in result_dict.items():
+            result.st_show_final_plot()
+        # for file_id in selected_files:
+        #     self.plot_data(file_id)
 
-        original_samples = len(data)
-        resampling_factor = original_samples / num_samples
-        new_fs = fs / resampling_factor
-
-        time_axis = [i / new_fs for i in range(len(data_resampled))]
-
-        trace_signal = go.Scatter(x=time_axis, y=data_resampled, mode='lines', name='Signal Data')
-
-        expected_detections, _ = self.loader.get_critical_points(file_id, new_fs)
-
-        shapes = []
-        for d in expected_detections:
-            shapes.append(
-                dict(
-                    type="line",
-                    x0=time_axis[int(d)],
-                    y0=min(data_resampled),
-                    x1=time_axis[int(d)],
-                    y1=max(data_resampled),
-                    line=dict(color="green", width=2, dash="dot")
-                )
-            )
-
-        layout = go.Layout(
-            title=f"Arquivo {file_id}",
-            xaxis=dict(title="Time (seconds)"),
-            yaxis=dict(title="Amplitude"),
-            showlegend=True,
-            shapes=shapes
-        )
-
-        fig = go.Figure(data=[trace_signal], layout=layout)
-        st.plotly_chart(fig)
 
     def run(self):
         show_results = False
@@ -79,14 +48,12 @@ class Homepage:
             selected_files = self.show_dataloader_selection()
 
             with st.expander("Configuração do pre-processamento", expanded=True):
-                st.write("...")
+                preprocessors = rvt_preprocessing.st_show_preprocessing()
 
             with st.expander("Configuração do detector", expanded=True):
                 st.write("...")
 
             if st.button("Play"):
-                st.write("### Selected Files for Processing")
-                st.write(selected_files)
                 show_results = True
 
         col1, col2 = st.columns([3, 2])
@@ -99,8 +66,7 @@ class Homepage:
         st.write("Welcome to the Streamlit app with an expandable sidebar menu!")
 
         if show_results:
-            for file_id in selected_files:
-                self.plot_data(file_id)
+            self.process(selected_files, preprocessors)
 
 if __name__ == "__main__":
     app = Homepage()

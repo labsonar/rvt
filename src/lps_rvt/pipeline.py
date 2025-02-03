@@ -4,8 +4,10 @@ import abc
 import typing
 import numpy as np
 
-import bisect
 import threading
+import plotly.graph_objs as go
+import scipy.signal as scipy
+import streamlit as st
 
 import lps_rvt.dataloader as rvt
 
@@ -67,6 +69,55 @@ class Detector(abc.ABC):
 
         return np.array(confusion_matrix, dtype=np.int32)
 
+class Result:
+    def __init__(self, file_id: int):
+        self.file_id = file_id
+        self.fs = None
+        self.expected_detections = []
+        self.expected_rebounds = []
+        self.processed_signal = None
+        self.detections = {}
+        self.evaluations = {}
+
+    def st_show_final_plot(self):
+        """Generates a Plotly plot with the data"""
+
+        num_samples = 400000
+        data_resampled = scipy.resample(self.processed_signal, num_samples)
+
+        original_samples = len(self.processed_signal)
+        resampling_factor = original_samples / num_samples
+        new_fs = self.fs / resampling_factor
+
+        time_axis = [i / new_fs for i in range(len(data_resampled))]
+
+        trace_signal = go.Scatter(x=time_axis, y=data_resampled, mode='lines', name='Signal Data')
+
+        shapes = []
+        for d in self.expected_detections:
+            new_d = int(d/resampling_factor)
+            shapes.append(
+                dict(
+                    type="line",
+                    x0=time_axis[new_d],
+                    y0=min(data_resampled),
+                    x1=time_axis[new_d],
+                    y1=max(data_resampled),
+                    line=dict(color="darkgreen", width=1, dash="dot")
+                )
+            )
+
+        layout = go.Layout(
+            title=f"Arquivo {self.file_id}",
+            xaxis=dict(title="Time (seconds)"),
+            yaxis=dict(title="Amplitude"),
+            showlegend=True,
+            shapes=shapes
+        )
+
+        fig = go.Figure(data=[trace_signal], layout=layout)
+        st.plotly_chart(fig)
+
 
 class ProcessingPipeline:
     def __init__(self, preprocessors: typing.List[PreProcessor], detectors: typing.List[Detector]):
@@ -79,30 +130,33 @@ class ProcessingPipeline:
         self.tolerance_after=self.sample_step
 
     def process_file(self, file_id: int, result: dict):
+        result[file_id] = Result(file_id)
+
         fs, data = self.loader.get_data(file_id)
-        expected_detections, expected_rebound = self.loader.get_critical_points(file_id, fs)
+        result[file_id].expected_detections, result[file_id].expected_rebound = \
+                    self.loader.get_critical_points(file_id, fs)
 
         for preprocessor in self.preprocessors:
             fs, data = preprocessor.process(fs, data)
+
+        result[file_id].fs = fs
+        result[file_id].processed_signal = data
 
         input_size = len(data)
 
         samples_to_check = list(range(self.margin, input_size - self.margin, self.sample_step))
         current_samples_to_check = samples_to_check.copy()
-        detector_results = {}
 
         for detector in self.detectors:
             detections = detector.detect(data, current_samples_to_check)
-            evaluation = detector.evaluate(expected_detections, samples_to_check, detections,
+            evaluation = detector.evaluate(result[file_id].expected_detections,
+                                           result[file_id].expected_rebound,
+                                           samples_to_check, detections,
                                            tolerance_before=self.tolerance_before,
                                            tolerance_after=self.tolerance_after)
-            detector_results[str(detector)] = {
-                "detections": detections,
-                "evaluation": evaluation
-            }
+            result[file_id].detections[str(detector)] = detections
+            result[file_id].evaluation[str(detector)] = evaluation
             current_samples_to_check = detections
-
-        result[file_id] = detector_results
 
     def apply(self, files: typing.List[int]) -> dict:
         result = {}
