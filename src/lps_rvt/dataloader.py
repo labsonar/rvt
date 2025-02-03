@@ -5,7 +5,6 @@ import typing
 
 import pandas as pd
 import scipy.io as scipy
-import streamlit as st
 
 import lps_rvt.types as rvt
 
@@ -37,7 +36,8 @@ class DataLoader:
 
         df_filtered = self.description
         if ammunition_types:
-            df_filtered = df_filtered[df_filtered["Type"].isin([ft.value for ft in ammunition_types])]
+            df_filtered = df_filtered[df_filtered["Type"].isin(
+                    [ft.value for ft in ammunition_types])]
         if buoys:
             df_filtered = df_filtered[df_filtered["Bouy"].isin(buoys)]
         if subsets:
@@ -67,10 +67,22 @@ class DataLoader:
 
         return fs, audio_data
 
-    def get_critical_points(self, file_id: int, fs: int):
+    def get_critical_points(self, file_id: int, fs: int) -> \
+            typing.Tuple[typing.List[int], typing.List[int]]:
+        """Returns samples where shots and rebound occurs
 
+        Args:
+            file_id (int): Test file identification
+            fs (int): Sample frequency
+
+        Returns:
+            typing.Tuple[
+                typing.List[int],     : expected detections
+                typing.List[int]      : expected rebounds
+            ]: 
+        """
         expected_detections = []
-        expected_rebound = []
+        expected_rebounds = []
 
         artifacts_filtered = self.artifacts[self.artifacts["Test File ID"] == file_id]
 
@@ -79,6 +91,6 @@ class DataLoader:
             if "Tiro" in artifact["Caracterization"]:
                 expected_detections.append(int(delta * fs))
             else:
-                expected_rebound.append(int(delta * fs))
+                expected_rebounds.append(int(delta * fs))
 
-        return expected_detections, expected_rebound
+        return expected_detections, expected_rebounds

@@ -8,6 +8,7 @@ data/Analysis/
 # Testing files
 Analysis/
 Result/
+results/
 *.wav
 
 # Byte-compiled / optimized / DLL files
