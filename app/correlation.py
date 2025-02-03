@@ -7,9 +7,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+import src.rvt.test_loader as test_loader
 import src.rvt.loader as loader
 import src.rvt.artifact as artifact
 from lps_sp.signal import decimate
+            
 
 def load_audio(artifact_id: int, buoy_id: int, signal_type: str):
     """Loads the audio data.
@@ -61,11 +63,18 @@ def correlation(audio_1: np.ndarray, audio_2: np.ndarray) -> np.ndarray:
     return correlation_
 
 
-def plot(args: argparse.Namespace, output_filename: str):
-    """Plots the correlation between two audio signals.""" 
-
-    fs_1, audio_1 = load_audio(args.first[0], args.first[1], args.first[2])
-    fs_2, audio_2 = load_audio(args.second[0], args.second[1], args.second[2])
+def plot(args: argparse.Namespace, fs_1: int, audio_1: np.ndarray, 
+         fs_2: int, audio_2: np.ndarray, output_filename: str):
+    """Plots the correlation between two audio signals.
+    
+    Args:
+        args (argparse.Namespace): Command line arguments.
+        fs_1 (int): Sampling rate of the first audio.
+        audio_1 (np.ndarray): Audio data.
+        fs_2 (int): Sampling rate of the second audio.
+        audio_2 (np.ndarray): Audio data.
+        output_filename (str): The name of the image file being generated.
+    """ 
     
     if fs_1 != fs_2:
         print('The audios sampling rates are different.')
@@ -83,12 +92,7 @@ def plot(args: argparse.Namespace, output_filename: str):
     plt.xlabel('Time (s)')
     plt.ylabel('Correlation')
     plt.grid()
-    if args.first[2] != args.second[2]:
-        path = f'data/Correlation/Comparison'    
-    elif args.first[2] == 'artifact':
-        path = f'data/Correlation/Artifact'
-    elif args.first[2] == 'background':
-        path = f'data/Correlation/Background'
+    path = f'data/Correlation'
     os.makedirs(path, exist_ok=True)
     plt.savefig(os.path.join(path, output_filename))
     plt.close()
@@ -115,19 +119,34 @@ def main():
     """Main fuction to parse command line arguments."""
 
     parser = argparse.ArgumentParser(description='Audio correlation.')
-    parser.add_argument('-f', '--first', type=my_tuple, required=True, 
+    parser.add_argument('-f', '--first', type=my_tuple, required=True, default=None, 
                         help='Identification of the first audio to be included in the correlation \
-                            (e.g.: \'artifact_ID,buoy_ID,signal_type\'). Signal types: \"artifact\" or \"background\".')
-    parser.add_argument('-s', '--second', type=my_tuple, required=True, 
-                        help='Identification of the second audio to be included in the correlation \
-                            (e.g.: \'artifact_ID,buoy_ID,signal_type\'). Signal types: \"artifact\" or \"background\".')
+                        (e.g.: \'artifact_ID,buoy_ID,signal_type\'). Signal types: \"artifact\" or \"background\".')
+    parser.add_argument('-s', '--second', type=my_tuple, default=None, 
+                        help='Identification of the second audio to be included in the correlation (optional) \
+                        (e.g.: \'artifact_ID,buoy_ID,signal_type\'). Signal types: \"artifact\" or \"background\".')
+    parser.add_argument('-tf', '--training_files', action='store_true', 
+                       help='If selected, the script plots the correlation between a chosen audio file \
+                        and each one of the training files.')
     
     args = parser.parse_args()
 
-    output_filename = f'{args.first[0]}_{args.first[1]}_{args.first[2]}_AND_\
+    if not args.training_files and args.second is None:
+        parser.error('The \"--second\" argument needs to be included if \"--training_files\" is not selected.')
+
+    if args.training_files:
+        loader_ = test_loader.DataLoader()
+        for num in range(1, 27):
+            output_filename = f'{args.first[0]}_{args.first[1]}_{args.first[2]}_AND_test_{num}'
+            fs_1, audio_1 = load_audio(args.first[0], args.first[1], args.first[2])
+            fs_2, audio_2 = loader_.getData(file_ID=num)
+            plot(args, fs_1, audio_1, fs_2, audio_2, output_filename)
+    else:
+        output_filename = f'{args.first[0]}_{args.first[1]}_{args.first[2]}_AND_\
 {args.second[0]}_{args.second[1]}_{args.second[2]}'
-    
-    plot(args, output_filename)
+        fs_1, audio_1 = load_audio(args.first[0], args.first[1], args.first[2])
+        fs_2, audio_2 = load_audio(args.second[0], args.second[1], args.second[2])
+        plot(args, fs_1, audio_1, fs_2, audio_2, output_filename)
 
 
 if __name__ == "__main__":

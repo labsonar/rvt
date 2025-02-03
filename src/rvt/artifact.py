@@ -185,7 +185,7 @@ class ArtifactManager():
         for i in range(1,6):
 
             try:
-                mapa[i] = self.get_time(artifact_id,i)
+                mapa[i] = self.get_time(artifact_id, i)
             except ValueError:
                 continue
             except KeyError:

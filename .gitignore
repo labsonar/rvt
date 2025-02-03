@@ -4,6 +4,7 @@ template_library
 # Data
 data/RVT/
 data/Analysis/
+data/Correlation/
 
 # Testing files
 Analysis/
