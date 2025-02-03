@@ -1,9 +1,12 @@
+import os
 import typing
 import numpy as np
 import scipy.signal as signal
 import scipy.io.wavfile as wav
 import streamlit as st
 import streamlit_sortables as ss
+
+import lps_utils.utils as lps_utils
 
 import lps_sp.signal as lps_signal
 import lps_rvt.pipeline as rvt_pipeline
@@ -69,8 +72,21 @@ class CorrelationProcessor(rvt_pipeline.PreProcessor):
 
     @staticmethod
     def st_config():
-        reference_file = st.text_input("Enter Reference WAV File Path")
-        return CorrelationProcessor(reference_file)
+        predefined_path = "./data/artifacts"
+        files = lps_utils.find_files(predefined_path)
+
+        if not files:
+            st.warning("Nenhum arquivo encontrado.")
+            return None
+
+        file_map = {os.path.splitext(os.path.basename(f))[0].replace(" ", "--").replace("_", " "): f for f in files}
+
+        selected_name = st.selectbox("Selecione o arquivo de referência:", list(file_map.keys()))
+
+        if not selected_name:
+            return None
+
+        return CorrelationProcessor(file_map[selected_name])
 
 def st_show_preprocessing():
     available_processes = {
@@ -109,6 +125,8 @@ def st_show_preprocessing():
         st.divider()
         st.write(f"Configuration for {process_name}")
         process_class = available_processes[process_name]
-        preprocessors.append(process_class.st_config())
+        p = process_class.st_config()
+        if p is not None:
+            preprocessors.append(p)
 
     return preprocessors

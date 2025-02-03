@@ -18,7 +18,7 @@ class DataLoader:
         self.artifacts = pd.read_csv(artifacts_filename)
 
     def get_files(self,
-                  file_types: typing.Optional[typing.List[rvt.Ammunition]] = None,
+                  ammunition_types: typing.Optional[typing.List[rvt.Ammunition]] = None,
                   buoys: typing.Optional[typing.List[int]] = None,
                   subsets: typing.Optional[typing.List[rvt.Subset]] = None) -> typing.List[int]:
         """Returns a list of file IDs with the specified restrictions
@@ -36,8 +36,8 @@ class DataLoader:
         """
 
         df_filtered = self.description
-        if file_types:
-            df_filtered = df_filtered[df_filtered["Type"].isin([ft.value for ft in file_types])]
+        if ammunition_types:
+            df_filtered = df_filtered[df_filtered["Type"].isin([ft.value for ft in ammunition_types])]
         if buoys:
             df_filtered = df_filtered[df_filtered["Bouy"].isin(buoys)]
         if subsets:
@@ -75,7 +75,7 @@ class DataLoader:
         artifacts_filtered = self.artifacts[self.artifacts["Test File ID"] == file_id]
 
         for _, artifact in artifacts_filtered.iterrows():
-            delta = pd.Timedelta(f"00:{artifact['Offset']}").total_seconds()
+            delta = pd.Timedelta(artifact['Offset']).total_seconds()
             if "Tiro" in artifact["Caracterization"]:
                 expected_detections.append(int(delta * fs))
             else:
