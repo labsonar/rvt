@@ -60,7 +60,7 @@ class Validate():
         
         # Modificado para colocar os parametros como colunas da tabela, e
         # montar a tabela com os testes de cada conjunto de parametros.
-        path = os.path.join(self.__root, f"{detector_tag}_results_by_file.csv")
+        path = os.path.join(self.__root, f"{detector_tag}_results.csv")
 
         if os.path.exists(path):
             table = pd.read_csv(path)

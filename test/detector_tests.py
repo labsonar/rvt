@@ -13,7 +13,7 @@ from rvt.validate import Validate
 from rvt.metric import Metric
 from rvt.detector import Detector
 from rvt import test_loader
-from rvt.detectors import energy, zscore, hypothesis, test
+from rvt.detectors import energy, zscore, hypothesis, wavelet, test
 from rvt.preprocessing import PreProcessor, ProcessorPipeline
 from rvt.preprocessors import high_pass
 
@@ -29,7 +29,7 @@ FS = 8000
 parser = argparse.ArgumentParser(description="App made to test detectors.")
 
 parser.add_argument("-f", "--files", type=int, nargs="*",
-        default=data["Test File"].unique(),
+        default=data["Test File ID"].unique(),
         help="Files to be analysed. Defaults to all.")
 
 parser.add_argument("-a", "--ammo_types", type=str, nargs="*",
@@ -54,6 +54,7 @@ parser.add_argument("-d", "--detector", type=int, default=0,
             0 - Energy Threshold Detector\
             1 - Zscore Detector\
             2 - Hypothesis Detector\
+            3 - Wavelet Detector\
             Defaults to all.")
 
 parser.add_argument("-p", "--preprocessor", type=int, nargs="*",
@@ -61,7 +62,7 @@ parser.add_argument("-p", "--preprocessor", type=int, nargs="*",
         help="Pre Processors to be used in order:\
             0 - High Pass Filter")
 
-parser.add_argument("--params", type=float, nargs='*',
+parser.add_argument("--params", nargs='*',
                     help="Detector Parameters List: window_size step threshold.")
 
 parser.add_argument("-t", "--test", action='store_true',
@@ -72,7 +73,8 @@ args = parser.parse_args()
 detector_map = {
     0: (energy.EnergyThresholdDetector, energy.create_energy_config),
     1: (zscore.ZScoreDetector, zscore.create_zscore_config),
-    2: (hypothesis.HypothesisDetector, hypothesis.create_hypothesis_config)
+    2: (hypothesis.HypothesisDetector, hypothesis.create_hypothesis_config),
+    3: (wavelet.WaveletDetector, wavelet.create_wavelet_config)
 }
 
 detector_class, config_creator = detector_map[args.detector]
@@ -118,11 +120,15 @@ def process_file(file: int):
         input_data, fs = pre_processing.process(input_data, fs)
 
     expected = []
-    for offset in data[data["Test File"] == file]["Offset"]:
-        delta = pd.Timedelta(offset).total_seconds()
-        expected.append(int(delta * fs))
-        
-    # print(f"Expected Detections: {expected}")
+    # for offset in data[data["Test File ID"] == file]["Offset"]:
+    #     delta = pd.Timedelta(offset).total_seconds()
+    #     expected.append(int(delta * fs))
+    for index, row in data[data["Test File ID"] == file].iterrows():
+        if row["Caracterization"] != "Ricochete":  # Verifica se a caracterização não é "Ricochete"
+            delta = pd.Timedelta(row["Offset"]).total_seconds()
+            expected.append(int(delta * fs))
+
+    print(f"Expected Detections: {expected}")
 
     for jndex, detector in enumerate(detectores):
         # print(f"\tTesting {detector.name}", end=": ", flush=True)
