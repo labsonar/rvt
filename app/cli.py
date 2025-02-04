@@ -7,6 +7,7 @@ import lps_rvt.types as rvt
 import lps_rvt.dataloader as rvt_loader
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
+import lps_rvt.detector as rvt_detector
 
 def add_file_options(parser: argparse.ArgumentParser):
     """ Add file selections options to argparse """
@@ -42,6 +43,25 @@ def get_selected_files(args: argparse.Namespace) -> typing.List[int]:
     loader = rvt_loader.DataLoader()
     return loader.get_files(ammunition_types, buoys, subsets)
 
+def add_pipeline_options(parser: argparse.ArgumentParser) -> None:
+    """
+    Adds pipeline configuration options to the argument parser.
+
+    Args:
+        parser (argparse.ArgumentParser): The argument parser to which the options will be added.
+    """
+    pipeline_group = parser.add_argument_group("Pipeline Configuration", "Define the pipeline settings.")
+
+    pipeline_group.add_argument("--sample-step", type=int, default=20,
+                                help="Step size for analysis (samples).")
+    pipeline_group.add_argument("--tolerance-before", type=int, default=160,
+                                help="Tolerance before event (samples).")
+    pipeline_group.add_argument("--tolerance-after", type=int, default=320,
+                                help="Tolerance after event (samples).")
+    pipeline_group.add_argument("--debounce-steps", type=int, default=50,
+                                help="Debounce steps (steps).")
+
+
 def main():
     """ Main CLI function"""
 
@@ -49,9 +69,16 @@ def main():
         description="Test DataLoader with filters and processing pipeline.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    parser.add_argument("--output_dir", type=str, default="./results/cli",
+                        help="Step size for analysis (samples).")
+    parser.add_argument("--extensive_plot", action="store_true",
+                            help="Enable logging for debugging purposes.")
 
+
+    add_pipeline_options(parser)
     add_file_options(parser)
     rvt_preprocessing.add_preprocessing_options(parser)
+    rvt_detector.add_detector_options(parser)
 
     args = parser.parse_args()
 
@@ -63,15 +90,20 @@ def main():
     print(f"Selected files: {selected_files}")
 
     preprocessors = rvt_preprocessing.get_preprocessors(args)
+    detectors = rvt_detector.get_detectors(args)
 
-    pipeline = rvt_pipeline.ProcessingPipeline(preprocessors, [])
+    pipeline = rvt_pipeline.ProcessingPipeline(preprocessors=preprocessors,
+                                               detectors=detectors,
+                                               sample_step=args.sample_step,
+                                               tolerance_before=args.tolerance_before,
+                                               tolerance_after=args.tolerance_after,
+                                               debounce_steps=args.debounce_steps)
     result_dict = pipeline.apply(selected_files)
 
-    output_path = "./results/cli"
-    os.makedirs(output_path, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     for file_id, result in result_dict.items():
-        result.final_plot(os.path.join(output_path, f"{file_id}.png"))
+        result.final_plot(os.path.join(args.output_dir, f"{file_id}.png"), not args.extensive_plot)
 
 
 if __name__ == "__main__":

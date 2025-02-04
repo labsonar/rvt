@@ -6,6 +6,7 @@ import lps_rvt.types as rvt
 import lps_rvt.dataloader as rvt_loader
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
+import lps_rvt.detector as rvt_detector
 
 class Homepage:
     """Streamlit Homepage"""
@@ -18,46 +19,55 @@ class Homepage:
         """
         Displays the Streamlit sidebar for selecting ammunition types, buoy IDs,
         and subsets. It returns the list of selected files based on the user's choices.
-        
+
         Returns:
             List[int]: List of selected file IDs based on the filters.
         """
-        with st.expander("Configuração do Teste", expanded=False):
-            ammunition_options = [e.name for e in rvt.Ammunition]
-            subset_options = [e.name for e in rvt.Subset]
+        ammunition_options = [e.name for e in rvt.Ammunition]
+        subset_options = [e.name for e in rvt.Subset]
 
-            selected_ammunition = st.multiselect("Selecione os Tipos de Munição",
-                                                 ammunition_options,
-                                                 default=[rvt.Ammunition.EXSUP.name])
-            selected_buoys = st.multiselect("Selecione os IDs das Boias", options=range(1, 6))
-            selected_subsets = st.multiselect("Selecione os Subconjuntos",
-                                              subset_options,
-                                              default=[rvt.Subset.TRAIN.name])
+        selected_ammunition = st.multiselect("Selecione os Tipos de Munição",
+                                                ammunition_options,
+                                                default=[rvt.Ammunition.EXSUP.name])
+        selected_buoys = st.multiselect("Selecione os IDs das Boias", options=range(1, 6))
+        selected_subsets = st.multiselect("Selecione os Subconjuntos",
+                                            subset_options,
+                                            default=[rvt.Subset.TRAIN.name])
 
-            ammunition_types = [rvt.Ammunition[t] for t in selected_ammunition] \
-                                if selected_ammunition else None
-            buoys = selected_buoys if selected_buoys else None
-            subsets = [rvt.Subset[s] for s in selected_subsets] \
-                                if selected_subsets else None
+        ammunition_types = [rvt.Ammunition[t] for t in selected_ammunition] \
+                            if selected_ammunition else None
+        buoys = selected_buoys if selected_buoys else None
+        subsets = [rvt.Subset[s] for s in selected_subsets] \
+                            if selected_subsets else None
 
         return self.loader.get_files(ammunition_types, buoys, subsets)
 
+    def show_pipeline_config(self) -> typing.Tuple[int, int, int, int]:
+        """
+        Displays the Streamlit sidebar for selecting Pipeline configuration.
+        It returns the tuple of parameters files based on the user's choices.
+        """
+        sample_step = st.number_input("Passo de análise (amostras)", min_value=1, value=20)
+        tolerance_before = st.number_input("Tolerância antes (amostras)", min_value=5, value=160)
+        tolerance_after = st.number_input("Tolerância depois (amostras)", min_value=5, value=320)
+        debounce_steps = st.number_input("Debounce_steps (passos)", min_value=1, value=50)
+        return sample_step, tolerance_before, tolerance_after, debounce_steps
+
     def process(self,
                 selected_files: typing.List[int],
-                preprocessors: typing.List[rvt_pipeline.PreProcessor]) -> None:
+                pipeline = rvt_pipeline.ProcessingPipeline) -> None:
         """
         Processes the selected files using the provided preprocessors and pipeline.
-        
+
         Args:
             selected_files (List[int]): List of selected file IDs to be processed.
-            preprocessors (List[PreProcessor]): List of preprocessing functions to be applied.
+            pipeline (rvt_pipeline.ProcessingPipeline): Pipeline to be applied.
         """
-        pipeline = rvt_pipeline.ProcessingPipeline(preprocessors, [])
+
         result_dict = pipeline.apply(selected_files)
 
         for _, result in result_dict.items():
             result.final_plot()
-
 
     def run(self) -> None:
         """
@@ -66,13 +76,19 @@ class Homepage:
         """
         show_results = False
         with st.sidebar:
-            selected_files = self.show_dataloader_selection()
 
-            with st.expander("Configuração do Pré-processamento", expanded=True):
+            with st.expander("Configuração do Pipeline", expanded=False):
+                sample_step, tolerance_before, tolerance_after, debounce_steps = \
+                        self.show_pipeline_config()
+
+            with st.expander("Configuração do Teste", expanded=False):
+                selected_files = self.show_dataloader_selection()
+
+            with st.expander("Configuração do Pré-processamento", expanded=False):
                 preprocessors = rvt_preprocessing.st_show_preprocessing()
 
-            with st.expander("Configuração do Detector", expanded=True):
-                st.write("...")
+            with st.expander("Configuração do Detector", expanded=False):
+                detectors = rvt_detector.st_show_detect()
 
             if st.button("Executar"):
                 show_results = True
@@ -84,7 +100,13 @@ class Homepage:
             st.image("./data/logo.png", width=300)
 
         if show_results:
-            self.process(selected_files, preprocessors)
+            pipeline = rvt_pipeline.ProcessingPipeline(preprocessors=preprocessors,
+                                                       detectors=detectors,
+                                                       sample_step=sample_step,
+                                                       tolerance_before=tolerance_before,
+                                                       tolerance_after=tolerance_after,
+                                                       debounce_steps=debounce_steps)
+            self.process(selected_files=selected_files, pipeline=pipeline)
 
 if __name__ == "__main__":
     app = Homepage()
