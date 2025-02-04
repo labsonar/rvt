@@ -17,7 +17,7 @@ import lps_sp.signal as lps_signal
 import lps_rvt.pipeline as rvt_pipeline
 
 
-class NormalizationProcessor(rvt_pipeline.PreProcessor):
+class Normalization(rvt_pipeline.Preprocessing):
     """Processor for normalizing audio data."""
     def __init__(self, norm_type: lps_signal.Normalization) -> None:
         self.norm_type = norm_type
@@ -36,20 +36,20 @@ class NormalizationProcessor(rvt_pipeline.PreProcessor):
         return fs, self.norm_type(input_data)
 
     @staticmethod
-    def st_config() -> "NormalizationProcessor":
+    def st_config() -> "Normalization":
         """
         Configures the normalization processor through Streamlit's interface.
         
         Returns:
-            NormalizationProcessor: A configured normalization processor instance.
+            Normalization: A configured normalization processor instance.
         """
         opts = list(lps_signal.Normalization)
         opts.pop(-1)
         norm_type = st.selectbox("Selecione o tipo de normalização", opts,
                         index=lps_signal.Normalization.MIN_MAX_ZERO_CENTERED.value)
-        return NormalizationProcessor(norm_type)
+        return Normalization(norm_type)
 
-class HighPassFilterProcessor(rvt_pipeline.PreProcessor):
+class HighPass(rvt_pipeline.Preprocessing):
     """Processor for applying a high-pass filter to the audio signal."""
 
     def __init__(self, cutoff_freq: float, order: int) -> None:
@@ -74,18 +74,18 @@ class HighPassFilterProcessor(rvt_pipeline.PreProcessor):
         return fs, filtered_data
 
     @staticmethod
-    def st_config() -> "HighPassFilterProcessor":
+    def st_config() -> "HighPass":
         """
         Configures the high-pass filter processor through Streamlit's interface.
         
         Returns:
-            HighPassFilterProcessor: A configured high-pass filter processor instance.
+            HighPass: A configured high-pass filter processor instance.
         """
         cutoff_freq = st.number_input("Frequência de corte (Hz)", min_value=100, value=1000)
         order = st.slider("Ordem do filtro", min_value=1, max_value=10, value=4)
-        return HighPassFilterProcessor(cutoff_freq, order)
+        return HighPass(cutoff_freq, order)
 
-class CorrelationProcessor(rvt_pipeline.PreProcessor):
+class Correlation(rvt_pipeline.Preprocessing):
     """Processor for performing correlation with a reference file."""
 
     def __init__(self, reference_file: str) -> None:
@@ -148,33 +148,33 @@ class CorrelationProcessor(rvt_pipeline.PreProcessor):
                     f for f in files}
 
     @staticmethod
-    def st_config() -> "CorrelationProcessor":
+    def st_config() -> "Correlation":
         """
         Configures the correlation processor through Streamlit's interface.
 
         Returns:
-            CorrelationProcessor: A configured correlation processor instance.
+            Correlation: A configured correlation processor instance.
         """
-        file_map = CorrelationProcessor.get_file_map(False)
+        file_map = Correlation.get_file_map(False)
 
         selected_name = st.selectbox("Selecione o arquivo de referência:", list(file_map.keys()))
 
         if not selected_name:
             return None
 
-        return CorrelationProcessor(file_map[selected_name])
+        return Correlation(file_map[selected_name])
 
-def st_show_preprocessing() -> typing.List[rvt_pipeline.PreProcessor]:
+def st_show_preprocessing() -> typing.List[rvt_pipeline.Preprocessing]:
     """
     Displays the preprocessing configuration interface and returns the configured processors.
 
     Returns:
-        List[PreProcessor]: A list of configured preprocessing processors.
+        List[Preprocessing]: A list of configured preprocessing processors.
     """
     available_processes = {
-        "Normalization": NormalizationProcessor,
-        "High Pass Filter": HighPassFilterProcessor,
-        "Correlation": CorrelationProcessor
+        "Normalization": Normalization,
+        "HighPass": HighPass,
+        "Correlation": Correlation
     }
 
     st.markdown(
@@ -225,7 +225,7 @@ def add_preprocessing_options(parser: argparse.ArgumentParser) -> None:
                                                  "Define the preprocessors applied to the data.")
 
     preprocess_group.add_argument("-p", "--preprocessors", nargs="+",
-                                   choices=["Normalization", "High Pass Filter", "Correlation"],
+                                   choices=["Normalization", "HighPass", "Correlation"],
                                    help="Select preprocessing steps in the desired order.")
 
     norm_options = list(lps_signal.Normalization)
@@ -233,14 +233,14 @@ def add_preprocessing_options(parser: argparse.ArgumentParser) -> None:
     norm_choices = [str(opt.name) for opt in norm_options]
 
     norm_group = parser.add_argument_group("Normalization Parameters",
-                                           "Configure the NormalizationProcessor.")
+                                           "Configure the Normalization.")
 
     norm_group.add_argument("--norm-type", type=str, choices=norm_choices,
                             default=lps_signal.Normalization.MIN_MAX_ZERO_CENTERED.name,
                             help="Type of normalization.")
 
     hp_filter_group = parser.add_argument_group("High-Pass Filter Parameters",
-                                                "Configure the HighPassFilterProcessor.")
+                                                "Configure the HighPass.")
 
     hp_filter_group.add_argument("--cutoff-freq", type=int, default=1000,
                                  help="Cutoff frequency (Hz).")
@@ -249,14 +249,14 @@ def add_preprocessing_options(parser: argparse.ArgumentParser) -> None:
                                  help="Filter order.")
 
     correlation_group = parser.add_argument_group("Correlation Parameters",
-                                                  "Configure the CorrelationProcessor.")
+                                                  "Configure the Correlation.")
 
-    file_map = CorrelationProcessor.get_file_map(True)
+    file_map = Correlation.get_file_map(True)
 
     correlation_group.add_argument("--reference-name", type=str, choices=list(file_map.keys()),
                                    help="Name of the reference file for correlation.")
 
-def get_preprocessors(args: argparse.Namespace) -> typing.List[rvt_pipeline.PreProcessor]:
+def get_preprocessors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Preprocessing]:
     """
     Returns a list of configured preprocessing processors based on the parsed arguments.
 
@@ -264,16 +264,16 @@ def get_preprocessors(args: argparse.Namespace) -> typing.List[rvt_pipeline.PreP
         args (argparse.Namespace): Parsed arguments containing configuration for preprocessing.
 
     Returns:
-        List[PreProcessor]: A list of configured preprocessing processors.
+        List[Preprocessing]: A list of configured preprocessing processors.
     """
-    file_map = CorrelationProcessor.get_file_map(True)
+    file_map = Correlation.get_file_map(True)
 
     preprocessors = []
     available_processors = {
-        "Normalization": lambda: NormalizationProcessor(lps_signal.Normalization[args.norm_type]),
-        "High Pass Filter": lambda: HighPassFilterProcessor(args.cutoff_freq, args.order),
+        "Normalization": lambda: Normalization(lps_signal.Normalization[args.norm_type]),
+        "HighPass": lambda: HighPass(args.cutoff_freq, args.order),
         "Correlation": lambda: (
-            CorrelationProcessor(file_map[args.reference_name])
+            Correlation(file_map[args.reference_name])
             if args.reference_name and args.reference_name in file_map else None
         ),
     }

@@ -17,7 +17,7 @@ import seaborn as sns
 
 import lps_rvt.dataloader as rvt
 
-class PreProcessor(abc.ABC):
+class Preprocessing(abc.ABC):
     """Abstract base class for data preprocessing."""
 
     @abc.abstractmethod
@@ -173,7 +173,7 @@ class Result:
             name="Expected Detections",
             line=dict(color="darkgreen", dash="dot", width=4)
         ))
-        
+
         for d in self.expected_rebounds:
             new_d = int(d/resampling_factor)
             shapes.append(
@@ -183,14 +183,14 @@ class Result:
                     y0=min(data_resampled),
                     x1=time_axis[new_d],
                     y1=max(data_resampled),
-                    line=dict(color="darkgreen", width=2, dash="dot")
+                    line=dict(color="green", width=2, dash="dot")
                 )
             )
 
         traces.append(go.Scatter(
             x=[None], y=[None], mode='lines',
             name="Expected Rebounds",
-            line=dict(color="lightgreen", dash="dot", width=2)
+            line=dict(color="green", dash="dot", width=2)
         ))
 
         if self.last_detector is not None:
@@ -204,14 +204,14 @@ class Result:
                         y0=min(data_resampled),
                         x1=time_axis[new_d],
                         y1=max(data_resampled),
-                        line=dict(color="darkred", width=0.5, dash="longdash")
+                        line=dict(color="darkred", width=0.5)
                     )
                 )
 
             traces.append(go.Scatter(
                 x=[None], y=[None], mode='lines',
                 name="Detections",
-                line=dict(color="darkred", dash="longdash", width=0.5)
+                line=dict(color="darkred", width=0.5)
             ))
 
             _, fp, fn, tp = self.evaluations[self.last_detector].ravel()
@@ -233,7 +233,7 @@ class Result:
         if filename is None:
             st.plotly_chart(fig)
         else:
-            pio.write_image(fig, filename, width=1920, height=1080, scale=5)
+            pio.write_image(fig, filename, width=800, height=600, scale=4)
 
     def final_cm(self, filename=None) -> None:
         """
@@ -258,11 +258,11 @@ class Result:
         else:
             plt.savefig(filename)
 
-class ProcessingPipeline:
+class Pipeline:
     """Manages the full data processing pipeline, applying preprocessing and detection to files."""
 
     def __init__(self,
-                 preprocessors: typing.List[PreProcessor],
+                 preprocessors: typing.List[Preprocessing],
                  detectors: typing.List[Detector],
                  margin: int = 2000,
                  sample_step: int = 50,
@@ -293,7 +293,7 @@ class ProcessingPipeline:
 
         return edges
 
-    def process_file(self, file_id: int, result: dict) -> None:
+    def _process_file(self, file_id: int, result: dict) -> None:
         """
         Processes a single file with the preprocessing steps and detectors.
 
@@ -304,7 +304,7 @@ class ProcessingPipeline:
         result[file_id] = Result(file_id)
 
         fs, data = self.loader.get_data(file_id)
-        result[file_id].expected_detections, result[file_id].expected_rebound = \
+        result[file_id].expected_detections, result[file_id].expected_rebounds = \
                     self.loader.get_critical_points(file_id, fs)
 
         for preprocessor in self.preprocessors:
@@ -322,7 +322,7 @@ class ProcessingPipeline:
             detections = detector.detect(data, current_samples_to_check)
             detections = self._edge_filter(detections)
             evaluation = detector.evaluate(result[file_id].expected_detections,
-                                           result[file_id].expected_rebound,
+                                           result[file_id].expected_rebounds,
                                            samples_to_check,
                                            detections,
                                            tolerance_before=self.tolerance_before,
@@ -346,7 +346,7 @@ class ProcessingPipeline:
         threads = []
 
         for file_id in files:
-            thread = threading.Thread(target=self.process_file, args=(file_id, result))
+            thread = threading.Thread(target=self._process_file, args=(file_id, result))
             threads.append(thread)
             thread.start()
 

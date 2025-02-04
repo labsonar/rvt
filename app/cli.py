@@ -92,7 +92,7 @@ def main():
     preprocessors = rvt_preprocessing.get_preprocessors(args)
     detectors = rvt_detector.get_detectors(args)
 
-    pipeline = rvt_pipeline.ProcessingPipeline(preprocessors=preprocessors,
+    pipeline = rvt_pipeline.Pipeline(preprocessors=preprocessors,
                                                detectors=detectors,
                                                sample_step=args.sample_step,
                                                tolerance_before=args.tolerance_before,

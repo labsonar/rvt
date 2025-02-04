@@ -55,13 +55,13 @@ class Homepage:
 
     def process(self,
                 selected_files: typing.List[int],
-                pipeline = rvt_pipeline.ProcessingPipeline) -> None:
+                pipeline = rvt_pipeline.Pipeline) -> None:
         """
         Processes the selected files using the provided preprocessors and pipeline.
 
         Args:
             selected_files (List[int]): List of selected file IDs to be processed.
-            pipeline (rvt_pipeline.ProcessingPipeline): Pipeline to be applied.
+            pipeline (rvt_pipeline.Pipeline): Pipeline to be applied.
         """
 
         result_dict = pipeline.apply(selected_files)
@@ -100,7 +100,7 @@ class Homepage:
             st.image("./data/logo.png", width=300)
 
         if show_results:
-            pipeline = rvt_pipeline.ProcessingPipeline(preprocessors=preprocessors,
+            pipeline = rvt_pipeline.Pipeline(preprocessors=preprocessors,
                                                        detectors=detectors,
                                                        sample_step=sample_step,
                                                        tolerance_before=tolerance_before,

@@ -6,11 +6,11 @@ import argparse
 
 import numpy as np
 import streamlit as st
+import streamlit_sortables as ss
 
 import lps_rvt.pipeline as rvt_pipeline
 
-
-class ThresholdDetector(rvt_pipeline.Detector):
+class Threshold(rvt_pipeline.Detector):
     """Detects events based on a simple threshold comparison."""
 
     def __init__(self, window_size: int, threshold: float):
@@ -40,18 +40,18 @@ class ThresholdDetector(rvt_pipeline.Detector):
         return detected_events
 
     @staticmethod
-    def st_config() -> "ThresholdDetector":
+    def st_config() -> "Threshold":
         """
         Configures the threshold detector processor through Streamlit's interface.
         
         Returns:
-            ThresholdDetector: A configured threshold detector instance.
+            Threshold: A configured threshold detector instance.
         """
         window_size = st.number_input("Tamanho da janela", min_value=1, value=10)
         threshold = st.number_input("Limiar", value=0.04)
-        return ThresholdDetector(window_size, threshold)
+        return Threshold(window_size, threshold)
 
-class EnergyDetector(rvt_pipeline.Detector):
+class Energy(rvt_pipeline.Detector):
     """Detects events based on an increase in energy compared to a reference window."""
 
     def __init__(self, ref_window: int, analysis_window: int, threshold: float):
@@ -88,21 +88,19 @@ class EnergyDetector(rvt_pipeline.Detector):
         return detected_events
 
     @staticmethod
-    def st_config() -> "EnergyDetector":
+    def st_config() -> "Energy":
         """
         Configures the energy detector processor through Streamlit's interface.
         
         Returns:
-            EnergyDetector: A configured energy detector instance.
+            Energy: A configured energy detector instance.
         """
         ref_window = st.number_input("Janela de referência", min_value=1, value=8000)
         analysis_window = st.number_input("Janela de análise", min_value=1, value=80)
         threshold = st.number_input("Limiar de proporção (x referência)", value=10)
-        return EnergyDetector(ref_window, analysis_window, threshold)
+        return Energy(ref_window, analysis_window, threshold)
 
-
-
-class ZScoreDetector(rvt_pipeline.Detector):
+class ZScore(rvt_pipeline.Detector):
     """Detects events based on Z-score analysis of signal fluctuations."""
 
     def __init__(self, ref_window: int, analysis_window: int, threshold: float):
@@ -140,32 +138,55 @@ class ZScoreDetector(rvt_pipeline.Detector):
         return detected_events
 
     @staticmethod
-    def st_config() -> "ZScoreDetector":
+    def st_config() -> "ZScore":
         """
         Configures the z-score detector processor through Streamlit's interface.
         
         Returns:
-            ZScoreDetector: A configured z-score detector instance.
+            ZScore: A configured z-score detector instance.
         """
         ref_window = st.number_input("Janela de referência", min_value=1, value=20000)
         analysis_window = st.number_input("Janela de análise", min_value=1, value=40)
         threshold = st.number_input("Limiar do Z-score", min_value=0.1, value=50.0)
-        return ZScoreDetector(ref_window, analysis_window, threshold)
+        return ZScore(ref_window, analysis_window, threshold)
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
     available_detectors = {
-        "Threshold": ThresholdDetector,
-        "Energy": EnergyDetector,
-        "Z-score": ZScoreDetector
+        "Threshold": Threshold,
+        "Energy": Energy,
+        "Z-score": ZScore
     }
+
+    st.markdown(
+        """
+        <style>
+        span[data-baseweb="tag"] {
+        background-color: #51A9EA !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    simple_style = """
+        .sortable-item {
+            background-color: #1EAD2B;
+            color: white;
+        }
+        """
 
     selected_detectors = st.multiselect("Selecione os detectores", list(available_detectors.keys()))
 
+    if len(selected_detectors) > 1:
+        st.markdown("Defina a ordem")
+        ordered_detectors = ss.sort_items(selected_detectors, custom_style=simple_style)
+    else:
+        ordered_detectors = selected_detectors
+
     detectors = []
-    for detector_name in selected_detectors:
+    for detector_name in ordered_detectors:
         st.divider()
-        st.write(f"Configuração para {detector_name}")
+        st.markdown(f"Configuração para {detector_name}")
         detector_class = available_detectors[detector_name]
         d = detector_class.st_config()
         if d is not None:
@@ -187,27 +208,27 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
                                 choices=["Threshold", "Energy", "Z-score"],
                                 help="Select the detectors to be used.")
 
-    # ThresholdDetector parameters
+    # Threshold parameters
     detector_group.add_argument("--threshold-window", type=int, default=10,
-                                help="Window size for the ThresholdDetector.")
+                                help="Window size for the Threshold.")
     detector_group.add_argument("--threshold-value", type=float, default=0.04,
-                                help="Threshold value for the ThresholdDetector.")
+                                help="Threshold value for the Threshold.")
 
-    # EnergyDetector parameters
+    # Energy parameters
     detector_group.add_argument("--energy-ref-window", type=int, default=8000,
-                                help="Reference window size for the EnergyDetector.")
+                                help="Reference window size for the Energy.")
     detector_group.add_argument("--energy-analysis-window", type=int, default=80,
-                                help="Analysis window size for the EnergyDetector.")
+                                help="Analysis window size for the Energy.")
     detector_group.add_argument("--energy-threshold", type=float, default=10.0,
-                                help="Threshold factor for the EnergyDetector.")
+                                help="Threshold factor for the Energy.")
 
-    # ZScoreDetector parameters
+    # ZScore parameters
     detector_group.add_argument("--zscore-ref-window", type=int, default=20000,
-                                help="Reference window size for the ZScoreDetector.")
+                                help="Reference window size for the ZScore.")
     detector_group.add_argument("--zscore-analysis-window", type=int, default=40,
-                                help="Analysis window size for the ZScoreDetector.")
+                                help="Analysis window size for the ZScore.")
     detector_group.add_argument("--zscore-threshold", type=float, default=50.0,
-                                help="Z-score threshold for the ZScoreDetector.")
+                                help="Z-score threshold for the ZScore.")
 
 def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector]:
     """
@@ -222,12 +243,12 @@ def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector
     detectors = []
 
     available_detectors = {
-        "Threshold": lambda: ThresholdDetector(args.threshold_window,
+        "Threshold": lambda: Threshold(args.threshold_window,
                                                args.threshold_value),
-        "Energy": lambda: EnergyDetector(args.energy_ref_window,
+        "Energy": lambda: Energy(args.energy_ref_window,
                                          args.energy_analysis_window,
                                          args.energy_threshold),
-        "Z-score": lambda: ZScoreDetector(args.zscore_ref_window,
+        "Z-score": lambda: ZScore(args.zscore_ref_window,
                                          args.zscore_analysis_window,
                                          args.zscore_threshold),
     }
