@@ -7,13 +7,18 @@ import scipy.io.wavfile as scipy_wav
 import lps_rvt.types as rvt
 import lps_rvt.dataloader as rvt_loader
 
-def process_files(output_path: str, ammunition_types: list) -> None:
+def process_files(output_path: str,
+                  ammunition_types: list,
+                  offset_before: int,
+                  offset_after: int) -> None:
     """
     Processes the test artifacts to extract and save corresponding signal segments as WAV files.
 
     Args:
         output_path (str): Directory path where the output WAV files will be saved.
         ammunition_types (list): List of ammunition types to filter the files by.
+        offset_before (int): Number of samples before the reference point to include in the segment.
+        offset_after (int): Number of samples after the reference point to include in the segment.
     """
     artifact_df = pd.read_csv('data/docs/test_artifacts.csv')
     loader = rvt_loader.DataLoader()
@@ -33,13 +38,14 @@ def process_files(output_path: str, ammunition_types: list) -> None:
             print("\tArtifact details: File ID:", artifact["Test File ID"], "Offset:", delta,
                   "Characterization:", artifact["Caracterization"], "Buoy:", artifact["Bouy"])
 
-            start_sample = int(delta * fs)
-            n_samples = int(0.25 * fs)  # 250 milliseconds
+            ref_point = int(delta * fs)
+            start_sample = ref_point - offset_before
+            end_samples = ref_point + offset_after
 
             filename = os.path.join(output_path,
                                 f'{artifact["Caracterization"]} Boia_{artifact["Bouy"]}.wav')
             scipy_wav.write(filename=filename, rate=fs,
-                                data=data[start_sample:start_sample + n_samples])
+                                data=data[start_sample:end_samples])
 
 def main() -> None:
     """ Main function os script """
@@ -57,6 +63,11 @@ def main() -> None:
     parser.add_argument("-o", "--output-dir", type=str, default="./data/artifacts",
                         help="Directory to save the output WAV files.")
 
+    parser.add_argument('-b',"--offset-before", type=int, default=0,
+                        help="Offset in samples before the reference point.")
+    parser.add_argument('-s',"--offset-after", type=int, default=2000,
+                        help="Offset in samples after the reference point.")
+
     args = parser.parse_args()
 
     ammunition_types = [rvt.Ammunition[t] for t in args.ammunition] if args.ammunition else None
@@ -65,7 +76,8 @@ def main() -> None:
         print("No ammunition type selected")
         return
 
-    process_files(args.output_dir, ammunition_types=ammunition_types)
+    process_files(args.output_dir, ammunition_types=ammunition_types,
+                  offset_before=args.offset_before, offset_after=args.offset_after)
 
 if __name__ == "__main__":
     main()

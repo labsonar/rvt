@@ -8,8 +8,8 @@ class Ammunition(enum.Enum):
     HE3M = "HE3m"
     GAE = "GAE"
 
-    def __str__(self):
-        return self.value
+    def __str__(self) -> str:
+        return str(self.value)
 
 class Subset(enum.Enum):
     """ Type of data subsets """

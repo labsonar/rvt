@@ -137,11 +137,12 @@ class Result:
                 Othewise data is presented as streamlit.
             resample (bool): If True data will be resampled to reduce computacional cost.
         """
-        if resample:
-            num_samples = 400000
+        original_samples = len(self.processed_signal)
+
+        if resample and original_samples > 480000:
+            num_samples = 480000
             data_resampled = scipy.resample(self.processed_signal, num_samples)
 
-            original_samples = len(self.processed_signal)
             resampling_factor = original_samples / num_samples
             new_fs = self.fs / resampling_factor
         else:
@@ -217,10 +218,10 @@ class Result:
             ))
 
             _, fp, fn, tp = self.evaluations[self.last_detector].ravel()
-            title=f"Arquivo {self.file_id}         Detecção: {tp}/{tp+fn}" \
+            title=f"{self.file_id}         Detecção: {tp}/{tp+fn}" \
                   f"         Falso Positivos: {fp}"
         else:
-            title=f"Arquivo {self.file_id}"
+            title=f"{self.file_id}"
 
         layout = go.Layout(
             title=title,
@@ -266,7 +267,13 @@ class Result:
         _, fp, fn,tp= self.evaluations[self.last_detector].ravel()
         return f'{tp}/{fn + tp} -> {fp}'
 
-    def get_cm(self):
+    def get_cm(self) -> np.ndarray:
+        """
+        Return the performance of an pipeline.
+
+        Returns:
+            np.ndarray: The confusion matrix.
+        """
         return self.evaluations[self.last_detector]
 
 class Pipeline:
@@ -280,6 +287,7 @@ class Pipeline:
                  tolerance_before: int = None,
                  tolerance_after: int = None,
                  debounce_steps: int = 3,
+                 loader = rvt.DataLoader()
                  ) -> None:
         self.preprocessors = preprocessors
         self.detectors = detectors
@@ -290,6 +298,7 @@ class Pipeline:
         self.tolerance_after= tolerance_after if tolerance_after is not None \
                                                 else self.sample_step*6
         self.debounce_steps = debounce_steps
+        self.loader = loader
 
     def _edge_filter(self, samples: typing.List[int]) -> typing.List[int]:
         if not samples:
@@ -315,11 +324,10 @@ class Pipeline:
         """
         result = Result(file_id)
 
-        loader = rvt.DataLoader()
 
-        fs, data = loader.get_data(file_id)
+        fs, data = self.loader.get_data(file_id)
         result.expected_detections, result.expected_rebounds = \
-                    loader.get_critical_points(file_id, fs)
+                    self.loader.get_critical_points(file_id, fs)
 
         for preprocessor in self.preprocessors:
             fs, data = preprocessor.process(fs, data)
@@ -358,6 +366,7 @@ class Pipeline:
 
         Args:
             files (List[int]): The list of file IDs to process.
+            max_process (optional[int]): max number of paralell process.
 
         Returns:
             dict: The results for all processed files.
@@ -374,14 +383,27 @@ class Pipeline:
 
         return result
 
-    def export(self, files: typing.List[int], output_dir: str, resample: bool = True, max_process: int = None) -> dict:
+    def export(self, files: typing.List[int], output_dir: str,
+               resample: bool = True, max_process: int = None) -> dict:
+        """
+        Applies the processing pipeline to a list of files in parallel
+            exporting the final plot for each of then.
+
+        Args:
+            files (List[int]): The list of file IDs to process.
+            output_dir (str): Output directory
+            resample (bool): If True data will be resampled to reduce computacional cost
+                when printing.
+            max_process (optional[int]): max number of paralell process.
+        """
         result = {}
         max_workers = max_process if max_process is not None else len(files)
 
         os.makedirs(output_dir, exist_ok=True)
 
         with cf.ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(self._export_file, file_id, output_dir, resample): file_id for file_id in files}
+            futures = {executor.submit(self._export_file, file_id, output_dir, resample): file_id \
+                                                                            for file_id in files}
 
             for future in cf.as_completed(futures):
                 future.result()

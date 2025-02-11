@@ -1,6 +1,7 @@
-"""Command line interface (CLI) equivalent to Streamlit homepage to test pipeline."""
-import os
-import typing
+"""
+Evaluate script equivalent to CLI but run all files
+without export and compiling results by ammunition type.
+"""
 import argparse
 import numpy as np
 
@@ -18,7 +19,8 @@ def add_pipeline_options(parser: argparse.ArgumentParser) -> None:
     Args:
         parser (argparse.ArgumentParser): The argument parser to which the options will be added.
     """
-    pipeline_group = parser.add_argument_group("Pipeline Configuration", "Define the pipeline settings.")
+    pipeline_group = parser.add_argument_group("Pipeline Configuration",
+                                               "Define the pipeline settings.")
 
     pipeline_group.add_argument("--sample-step", type=int, default=20,
                                 help="Step size for analysis (samples).")
@@ -36,6 +38,8 @@ def main():
         description="Test DataLoader with filters and processing pipeline.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    parser.add_argument("--only_artifacts", action="store_true",
+                            help="Enable logging for debugging purposes.")
 
     add_pipeline_options(parser)
     rvt_preprocessing.add_preprocessing_options(parser)
@@ -43,18 +47,20 @@ def main():
 
     args = parser.parse_args()
 
-    loader = rvt_loader.DataLoader()
+    loader=rvt_loader.ArtifactLoader() if args.only_artifacts else rvt_loader.DataLoader()
     selected_files = loader.get_files()
 
     preprocessors = rvt_preprocessing.get_preprocessors(args)
     detectors = rvt_detector.get_detectors(args)
 
-    pipeline = rvt_pipeline.Pipeline(preprocessors=preprocessors,
-                                               detectors=detectors,
-                                               sample_step=args.sample_step,
-                                               tolerance_before=args.tolerance_before,
-                                               tolerance_after=args.tolerance_after,
-                                               debounce_steps=args.debounce_steps)
+    pipeline = rvt_pipeline.Pipeline(
+        preprocessors=preprocessors,
+        detectors=detectors,
+        sample_step=args.sample_step,
+        tolerance_before=args.tolerance_before,
+        tolerance_after=args.tolerance_after,
+        debounce_steps=args.debounce_steps,
+        loader=loader)
 
     result_dict = pipeline.apply(selected_files)
 

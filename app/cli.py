@@ -27,7 +27,7 @@ def add_file_options(parser: argparse.ArgumentParser):
                              default=[rvt.Subset.TRAIN.name],
                              help="Filter by subset types.")
 
-def get_selected_files(args: argparse.Namespace) -> typing.List[int]:
+def get_selected_files(args: argparse.Namespace, loader: rvt_loader.BaseLoader) -> typing.List[int]:
     """Get selected files based on parse of arguments
 
     Returns:
@@ -38,8 +38,6 @@ def get_selected_files(args: argparse.Namespace) -> typing.List[int]:
     buoys = args.buoys if args.buoys else None
     subsets = [rvt.Subset[s] for s in args.subsets] if args.subsets else None
 
-    # Load files with filters
-    loader = rvt_loader.DataLoader()
     return loader.get_files(ammunition_types, buoys, subsets)
 
 def add_pipeline_options(parser: argparse.ArgumentParser) -> None:
@@ -49,13 +47,14 @@ def add_pipeline_options(parser: argparse.ArgumentParser) -> None:
     Args:
         parser (argparse.ArgumentParser): The argument parser to which the options will be added.
     """
-    pipeline_group = parser.add_argument_group("Pipeline Configuration", "Define the pipeline settings.")
+    pipeline_group = parser.add_argument_group("Pipeline Configuration",
+                                               "Define the pipeline settings.")
 
     pipeline_group.add_argument("--sample-step", type=int, default=20,
                                 help="Step size for analysis (samples).")
-    pipeline_group.add_argument("--tolerance-before", type=int, default=160,
+    pipeline_group.add_argument("--tolerance-before", type=int, default=80,
                                 help="Tolerance before event (samples).")
-    pipeline_group.add_argument("--tolerance-after", type=int, default=320,
+    pipeline_group.add_argument("--tolerance-after", type=int, default=240,
                                 help="Tolerance after event (samples).")
     pipeline_group.add_argument("--debounce-steps", type=int, default=50,
                                 help="Debounce steps (steps).")
@@ -73,6 +72,8 @@ def main():
                             help="Enable logging for debugging purposes.")
     parser.add_argument("--no_plot", action="store_true",
                             help="Enable logging for debugging purposes.")
+    parser.add_argument("--only_artifacts", action="store_true",
+                            help="Enable logging for debugging purposes.")
 
 
     add_pipeline_options(parser)
@@ -82,7 +83,9 @@ def main():
 
     args = parser.parse_args()
 
-    selected_files = get_selected_files(args)
+    loader=rvt_loader.ArtifactLoader() if args.only_artifacts else rvt_loader.DataLoader()
+    selected_files = get_selected_files(args, loader)
+
     if not selected_files:
         print("No files selected.")
         return
@@ -98,7 +101,6 @@ def main():
                                                tolerance_before=args.tolerance_before,
                                                tolerance_after=args.tolerance_after,
                                                debounce_steps=args.debounce_steps)
-    
 
     if args.no_plot:
         result_dict = pipeline.apply(selected_files)

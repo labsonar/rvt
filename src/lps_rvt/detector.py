@@ -146,7 +146,7 @@ class ZScore(rvt_pipeline.Detector):
             ZScore: A configured z-score detector instance.
         """
         ref_window = st.number_input("Janela de referência", min_value=1, value=20000)
-        analysis_window = st.number_input("Janela de análise", min_value=1, value=40)
+        analysis_window = st.number_input("Janela de análise", min_value=1, value=80)
         threshold = st.number_input("Limiar do Z-score", min_value=0.1, value=50.0)
         return ZScore(ref_window, analysis_window, threshold)
 
@@ -175,7 +175,9 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
         }
         """
 
-    selected_detectors = st.multiselect("Selecione os detectores", list(available_detectors.keys()))
+    selected_detectors = st.multiselect("Selecione os detectores",
+                                        list(available_detectors.keys()),
+                                        default=["Z-score"])
 
     if len(selected_detectors) > 1:
         st.markdown("Defina a ordem")
