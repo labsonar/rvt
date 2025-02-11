@@ -2,9 +2,10 @@
 Module to define a pipeline for processing audio data,
 including preprocessing steps and detection tasks.
 """
+import os
 import abc
 import typing
-import threading
+import concurrent.futures as cf
 
 import numpy as np
 import pandas as pd
@@ -259,6 +260,15 @@ class Result:
         else:
             plt.savefig(filename)
 
+    def __str__(self):
+        if len(self.evaluations) == 0:
+            return super().__str__()
+        _, fp, fn,tp= self.evaluations[self.last_detector].ravel()
+        return f'{tp}/{fn + tp} -> {fp}'
+
+    def get_cm(self):
+        return self.evaluations[self.last_detector]
+
 class Pipeline:
     """Manages the full data processing pipeline, applying preprocessing and detection to files."""
 
@@ -273,7 +283,6 @@ class Pipeline:
                  ) -> None:
         self.preprocessors = preprocessors
         self.detectors = detectors
-        self.loader = rvt.DataLoader()
         self.margin = margin
         self.sample_step = sample_step
         self.tolerance_before= tolerance_before if tolerance_before is not None \
@@ -294,25 +303,29 @@ class Pipeline:
 
         return edges
 
-    def _process_file(self, file_id: int, result: dict) -> None:
+    def _process_file(self, file_id: int) -> Result:
         """
         Processes a single file with the preprocessing steps and detectors.
 
         Args:
             file_id (int): The ID of the file to process.
-            result (dict): The dictionary to store the results for each file.
-        """
-        result[file_id] = Result(file_id)
 
-        fs, data = self.loader.get_data(file_id)
-        result[file_id].expected_detections, result[file_id].expected_rebounds = \
-                    self.loader.get_critical_points(file_id, fs)
+        Returns:
+            result (Result): The class Result for defined file.
+        """
+        result = Result(file_id)
+
+        loader = rvt.DataLoader()
+
+        fs, data = loader.get_data(file_id)
+        result.expected_detections, result.expected_rebounds = \
+                    loader.get_critical_points(file_id, fs)
 
         for preprocessor in self.preprocessors:
             fs, data = preprocessor.process(fs, data)
 
-        result[file_id].fs = fs
-        result[file_id].processed_signal = data
+        result.fs = fs
+        result.processed_signal = data
 
         input_size = len(data)
 
@@ -322,18 +335,24 @@ class Pipeline:
         for detector in self.detectors:
             detections = detector.detect(data, current_samples_to_check)
             detections = self._edge_filter(detections)
-            evaluation = detector.evaluate(result[file_id].expected_detections,
-                                           result[file_id].expected_rebounds,
+            evaluation = detector.evaluate(result.expected_detections,
+                                           result.expected_rebounds,
                                            samples_to_check,
                                            detections,
                                            tolerance_before=self.tolerance_before,
                                            tolerance_after=self.tolerance_after)
-            result[file_id].evaluations[str(detector)] = evaluation
-            result[file_id].detections[str(detector)] = detections.copy()
-            result[file_id].last_detector = str(detector)
+            result.evaluations[str(detector)] = evaluation
+            result.detections[str(detector)] = detections.copy()
+            result.last_detector = str(detector)
             current_samples_to_check = detections
 
-    def apply(self, files: typing.List[int]) -> dict:
+        return file_id, result
+
+    def _export_file(self, file_id: int, output_dir:str, resample: bool = True) -> None:
+        _, result = self._process_file(file_id)
+        result.final_plot(os.path.join(output_dir, f"{file_id}.png"), resample)
+
+    def apply(self, files: typing.List[int], max_process: int = None) -> dict:
         """
         Applies the processing pipeline to a list of files in parallel.
 
@@ -344,14 +363,27 @@ class Pipeline:
             dict: The results for all processed files.
         """
         result = {}
-        threads = []
+        max_workers = max_process if max_process is not None else len(files)
 
-        for file_id in files:
-            thread = threading.Thread(target=self._process_file, args=(file_id, result))
-            threads.append(thread)
-            thread.start()
+        with cf.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(self._process_file, file_id): file_id for file_id in files}
 
-        for thread in threads:
-            thread.join()
+            for future in cf.as_completed(futures):
+                file_id, processed_data = future.result()
+                result[file_id] = processed_data
+
+        return result
+
+    def export(self, files: typing.List[int], output_dir: str, resample: bool = True, max_process: int = None) -> dict:
+        result = {}
+        max_workers = max_process if max_process is not None else len(files)
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        with cf.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(self._export_file, file_id, output_dir, resample): file_id for file_id in files}
+
+            for future in cf.as_completed(futures):
+                future.result()
 
         return result

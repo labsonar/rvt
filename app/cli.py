@@ -1,5 +1,4 @@
 """Command line interface (CLI) equivalent to Streamlit homepage to test pipeline."""
-import os
 import typing
 import argparse
 
@@ -61,7 +60,6 @@ def add_pipeline_options(parser: argparse.ArgumentParser) -> None:
     pipeline_group.add_argument("--debounce-steps", type=int, default=50,
                                 help="Debounce steps (steps).")
 
-
 def main():
     """ Main CLI function"""
 
@@ -72,6 +70,8 @@ def main():
     parser.add_argument("--output_dir", type=str, default="./results/cli",
                         help="Step size for analysis (samples).")
     parser.add_argument("--extensive_plot", action="store_true",
+                            help="Enable logging for debugging purposes.")
+    parser.add_argument("--no_plot", action="store_true",
                             help="Enable logging for debugging purposes.")
 
 
@@ -98,13 +98,16 @@ def main():
                                                tolerance_before=args.tolerance_before,
                                                tolerance_after=args.tolerance_after,
                                                debounce_steps=args.debounce_steps)
-    result_dict = pipeline.apply(selected_files)
+    
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    if args.no_plot:
+        result_dict = pipeline.apply(selected_files)
 
-    for file_id, result in result_dict.items():
-        result.final_plot(os.path.join(args.output_dir, f"{file_id}.png"), not args.extensive_plot)
+        for file_id, result in result_dict.items():
+            print(file_id, ": ", str(result))
 
+    else:
+        pipeline.export(selected_files, args.output_dir, not args.extensive_plot)
 
 if __name__ == "__main__":
     main()
