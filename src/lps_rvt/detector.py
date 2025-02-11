@@ -3,6 +3,7 @@ Module to provide a set of detectors for audio signal processing within a pipeli
 """
 import typing
 import argparse
+import pywt
 
 import numpy as np
 import streamlit as st
@@ -149,13 +150,80 @@ class ZScore(rvt_pipeline.Detector):
         analysis_window = st.number_input("Janela de análise", min_value=1, value=80)
         threshold = st.number_input("Limiar do Z-score", min_value=0.1, value=50.0)
         return ZScore(ref_window, analysis_window, threshold)
+    
+class Wavelet(rvt_pipeline.Detector):
+    """Detects events using the Discrete Wavelet Transform."""
+
+    def __init__(self, window_size: int, overlap: float, threshold: float,
+                 wavelet: str, level: int):
+        self.window_size = window_size
+        self.overlap = overlap
+        self.threshold = threshold
+        self.wavelet = wavelet
+        self.level = level
+        
+    def detect(self, input_data: np.ndarray, samples_to_check: typing.List[int]) \
+            -> typing.List[int]:
+        """
+        Detects events in the input data.
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            samples_to_check (List[int]): The list of sample indices to check.
+
+        Returns:
+            List[int]: A list of sample indices where events were detected.
+        """        
+        detected_events = []
+        # step = int(self.window_size * (1 - self.overlap))
+    
+        for idx in samples_to_check:
+            if idx + self.window_size <= len(input_data):
+                analysis_data = input_data[idx: idx + self.window_size]
+                coeffs = pywt.wavedec(analysis_data, self.wavelet, level=self.level)
+            
+                detail_coeffs = np.concatenate(coeffs[1:])  
+                energy = np.sum(detail_coeffs ** 2)
+
+                if energy > self.threshold:
+                    detected_events.append(idx)
+
+        return detected_events
+    
+    def sliding_window(self, input_data, window_size, overlap):
+        """
+        Divides the signal in sliding windows
+        """
+        step = int(window_size * (1 - overlap))
+        for start in range(0, len(input_data) - window_size + 1, step):
+            yield input_data[start:start + window_size]
+
+    @staticmethod
+    def st_config() -> "Wavelet":
+        """
+        Configures the Wavelet detector processor through Streamlit's interface.
+        
+        Returns:
+            Wavelet: A configured Wavelet detector instance.
+        """
+
+        wavelet_list = ["haar", "db4", "sym2", "coif2"]
+
+        window_size = st.number_input("Janela de análise", min_value=1, value=2000)
+        overlap = st.slider("Sobreposição da Janela", min_value=0.0, max_value=1.0, step=0.05)
+        threshold = st.number_input("Limiar de detecção da Wavelet", min_value=0.0, value=0.1)
+        wavelet = st.selectbox("Tipo de Wavelet", wavelet_list)
+        level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1)
+        return Wavelet(window_size, overlap, threshold, wavelet, level)
+
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
     available_detectors = {
         "Threshold": Threshold,
         "Energy": Energy,
-        "Z-score": ZScore
+        "Z-score": ZScore,
+        "Wavelet": Wavelet
     }
 
     st.markdown(
@@ -231,6 +299,18 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
                                 help="Analysis window size for the ZScore.")
     detector_group.add_argument("--zscore-threshold", type=float, default=50.0,
                                 help="Z-score threshold for the ZScore.")
+    
+    # Wavelet parameters
+    detector_group.add_argument("--wavelet_window", type=int, default=2000,
+                                help="Window size for the Wavelet Detector.")
+    detector_group.add_argument("--wavelet_overlap", type=float, default=0.2,
+                                help="Overlap for Wavelet Detector.")
+    detector_group.add_argument("--wavelet_threshold", type=float, default=0.3,
+                                help="Threshold factor for Wavelet Detector.")
+    detector_group.add_argument("--wavelet_type", type=str, default="db4",
+                                help="Wavelet Type for Wavelet Detector.")
+    detector_group.add_argument("--wavelet_level", type=int, default=1,
+                                help="Decomposition Level for Wavelet Detector.")
 
 def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector]:
     """
@@ -253,6 +333,9 @@ def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector
         "Z-score": lambda: ZScore(args.zscore_ref_window,
                                          args.zscore_analysis_window,
                                          args.zscore_threshold),
+        "Wavelet": lambda: Wavelet(args.wavelet_window, args.wavelet_overlap,
+                                   args.wavelet_threshold, args.wavelet_type, 
+                                   args.wavelet_level)
     }
 
     for detector in args.detectors or []:
