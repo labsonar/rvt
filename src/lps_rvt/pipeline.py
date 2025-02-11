@@ -152,7 +152,8 @@ class Result:
 
         traces = []
 
-        traces.append(go.Scatter(x=time_axis, y=data_resampled, mode='lines', name='Signal Data', line=dict(color='darkblue', width=0.5)))
+        traces.append(go.Scatter(x=time_axis, y=data_resampled, mode='lines', name='Signal Data',
+                                 line=dict(color='darkblue', width=0.5)))
 
         shapes = []
         for d in self.expected_detections:

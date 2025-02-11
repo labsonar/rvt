@@ -119,9 +119,16 @@ class Correlation(rvt_pipeline.Preprocessing):
             reference_data_resampled = signal.resample(self.reference_data, num_samples)
         else:
             reference_data_resampled = self.reference_data
+            num_samples = len(self.reference_data)
 
-        correlation_result = np.correlate(input_data, reference_data_resampled, mode='full')
-        return fs, correlation_result
+        audio_1 = input_data - np.mean(input_data)
+        audio_1 = audio_1 / np.max(np.abs(audio_1))
+
+        audio_2 = reference_data_resampled - np.mean(reference_data_resampled)
+        audio_2 = audio_2 / np.max(np.abs(audio_2))
+
+        correlation_result = signal.correlate(audio_1, audio_2, mode='full')
+        return fs, correlation_result[-len(input_data):]
 
     @staticmethod
     def get_file_map(without_spaces: bool = False) -> typing.Optional[dict]:

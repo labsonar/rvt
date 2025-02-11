@@ -17,10 +17,7 @@ for ammu in rvt.Ammunition:
 
     files = loader.get_files(ammunition_types=[ammu])
 
-    tns[ammu] = []
-    fps[ammu] = []
-    fns[ammu] = []
-    tps[ammu] = []
+    tns[ammu], fps[ammu], fns[ammu], tps[ammu] = [], [], [], []
 
     for file in files:
 
@@ -47,7 +44,7 @@ for ammu in rvt.Ammunition:
         fns[ammu].append(fn)
         tps[ammu].append(tp)
 
-        # print("\t", file, ": ", tp, "/", fn + tp, "  -> ", fp)
+        print("\t", file, ": ", tp, "/", fn + tp, "  -> ", fp)
 
 
 for ammu in rvt.Ammunition:
