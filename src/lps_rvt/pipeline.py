@@ -128,7 +128,7 @@ class Result:
         self.evaluations = {}
         self.last_detector = None
 
-    def final_plot(self, filename=None, resample: bool = True) -> None:
+    def final_plot(self, metrics, filename=None, resample: bool = True) -> None:
         """
         Generates a Plotly plot with the processed signal and expected detections.
 
@@ -218,8 +218,14 @@ class Result:
             ))
 
             _, fp, fn, tp = self.evaluations[self.last_detector].ravel()
-            title=f"{self.file_id}         Detecção: {tp}/{tp+fn}" \
-                  f"         Falso Positivos: {fp}"
+
+            title=f"{self.file_id}"
+            for metric in metrics:
+                _, a, b = metric.apply(self.evaluations[self.last_detector])
+                title += f"\t\t\t{str(metric)}: {a}/{b}"
+
+            # title=f"{self.file_id}         Detecção: {tp}/{tp+fn}" \
+            #     f"         Falso Positivos: {fp}"
         else:
             title=f"{self.file_id}"
 

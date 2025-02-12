@@ -5,7 +5,7 @@ without export and compiling results by ammunition type.
 import argparse
 import numpy as np
 
-import lps_rvt.types as rvt
+import lps_rvt.rvt_types as rvt
 import lps_rvt.dataloader as rvt_loader
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing

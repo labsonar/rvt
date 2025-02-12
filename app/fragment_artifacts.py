@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 import scipy.io.wavfile as scipy_wav
 
-import lps_rvt.types as rvt
+import lps_rvt.rvt_types as rvt
 import lps_rvt.dataloader as rvt_loader
 
 def process_files(output_path: str,

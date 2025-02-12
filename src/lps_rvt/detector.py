@@ -150,7 +150,7 @@ class ZScore(rvt_pipeline.Detector):
         analysis_window = st.number_input("Janela de análise", min_value=1, value=80)
         threshold = st.number_input("Limiar do Z-score", min_value=0.1, value=50.0)
         return ZScore(ref_window, analysis_window, threshold)
-    
+
 class Wavelet(rvt_pipeline.Detector):
     """Detects events using the Discrete Wavelet Transform."""
 
@@ -215,7 +215,6 @@ class Wavelet(rvt_pipeline.Detector):
         wavelet = st.selectbox("Tipo de Wavelet", wavelet_list)
         level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1)
         return Wavelet(window_size, overlap, threshold, wavelet, level)
-
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""

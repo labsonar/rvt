@@ -4,7 +4,7 @@ import os
 import typing
 import pandas as pd
 import scipy.io as scipy
-import lps_rvt.types as rvt
+import lps_rvt.rvt_types as rvt
 
 class BaseLoader:
     """ Base class for loading and filtering test data and artifacts """

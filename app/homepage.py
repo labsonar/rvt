@@ -3,11 +3,12 @@ import typing
 import pandas as pd
 import streamlit as st
 
-import lps_rvt.types as rvt
+import lps_rvt.rvt_types as rvt
 import lps_rvt.dataloader as rvt_loader
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
 import lps_rvt.detector as rvt_detector
+import lps_rvt.metrics as rvt_metrics
 
 class Homepage:
     """Streamlit Homepage"""
@@ -77,12 +78,7 @@ class Homepage:
                 detectors = rvt_detector.st_show_detect()
 
             with st.expander("Exibição dos resultados", expanded=False):
-                loader_type = st.selectbox("Modo de análise",
-                                ["Artefato", "Arquivo de teste"],
-                                index=0)
-                plot_type = st.selectbox("Tipo de exibição",
-                                ["Plot no tempo", "Figuras de mérito"],
-                                index=0)
+                loader_type, plot_type, metrics = rvt_metrics.st_show_metrics_config()
 
             if st.button("Executar"):
                 show_results = True
@@ -108,27 +104,39 @@ class Homepage:
 
             if plot_type == "Plot no tempo":
                 for _, result in result_dict.items():
-                    result.final_plot()
+                    result.final_plot(metrics)
             else:
 
-                total_tp = total_fn = total_fp = 0
-                table_data = []
-                table2_data = []
+                # total_tp = total_fn = total_fp = 0
+                # table_data = []
+                # table2_data = []
 
-                for file_id, result in result_dict.items():
-                    _, fp, fn, tp = result.get_cm().ravel()
-                    total_tp += tp
-                    total_fn += fn
-                    total_fp += fp
-                    table_data.append({"Arquivo": file_id,
-                                       "Prob. Detecção": f"{tp}/{tp + fn}",
-                                       "Falsos Positivos": fp})
+                # for file_id, result in result_dict.items():
+                #     _, fp, fn, tp = result.get_cm().ravel()
+                #     total_tp += tp
+                #     total_fn += fn
+                #     total_fp += fp
+                #     table_data.append({"Arquivo": file_id,
+                #                     "Prob. Detecção": f"{tp}/{tp + fn}",
+                #                     "Falsos Positivos": fp})
 
-                table2_data.insert(0, {"Prob. Detecção": f"{total_tp}/{total_tp + total_fn}",
-                                       "Falsos Positivos": f"{total_fp}"})
+                # table2_data.insert(0, {"Prob. Detecção": f"{total_tp}/{total_tp + total_fn}",
+                #                     "Falsos Positivos": f"{total_fp}"})
 
-                df = pd.DataFrame(table_data)
-                df2 = pd.DataFrame(table2_data)
+                metric_list = [str(x) for x in metrics]
+                df = pd.DataFrame(columns=["Arquivo"] + metric_list)
+                df_internal = pd.DataFrame(columns=metric_list)
+                df2 = pd.DataFrame(columns=metric_list)
+
+                for index, (file_id, result) in enumerate(result_dict.items()):
+                    cm = result.get_cm().ravel()
+                    df.loc[index, "Arquivo"] = file_id
+                    for metric in metrics:
+                        df_internal.loc[index, str(metric)] = 100*metric.apply(cm)[0]
+                        df.loc[index, str(metric)] = f"{100*metric.apply(cm)[0] :.2f}%"
+
+                for metric in metrics:
+                    df2.loc[0, str(metric)] = f"{df_internal.loc[:, str(metric)].mean():.2f}% ± {df_internal.loc[:, str(metric)].std():.2f}%"
 
                 def highlight_rows(s):
                     return ['background-color: #f2f2f2' if i % 2 == 0 else \
@@ -137,20 +145,20 @@ class Homepage:
                 styled_df = df.style \
                     .apply(highlight_rows, axis=0) \
                     .set_properties(**{'border': '1px solid black', 'text-align': 'center',
-                                       'vertical-align': 'middle'}) \
+                                    'vertical-align': 'middle', 'color': 'black'}) \
                     .set_table_styles([
-                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'), ('color', 'white'),
-                                                           ('font-weight', 'bold'), ('text-align', 'center')]},
+                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'), ('color', 'black'),
+                                                        ('font-weight', 'bold'), ('text-align', 'center')]},
                         {'selector': 'tbody td', 'props': [('border', '1px solid black'), ('text-align', 'center')]}
                     ])
 
                 styled2_df = df2.style \
                     .apply(highlight_rows, axis=0) \
                     .set_properties(**{'border': '1px solid black', 'text-align': 'center',
-                                       'vertical-align': 'middle'}) \
+                                    'vertical-align': 'middle', 'color': 'black'}) \
                     .set_table_styles([
-                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'), ('color', 'white'),
-                                                           ('font-weight', 'bold'), ('text-align', 'center')]},
+                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'), ('color', 'black'),
+                                                        ('font-weight', 'bold'), ('text-align', 'center')]},
                         {'selector': 'tbody td', 'props': [('border', '1px solid black'), ('text-align', 'center')]}
                     ])
 
