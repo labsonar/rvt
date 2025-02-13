@@ -16,7 +16,6 @@ import lps_utils.utils as lps_utils
 import lps_sp.signal as lps_signal
 import lps_rvt.pipeline as rvt_pipeline
 
-
 class Normalization(rvt_pipeline.Preprocessing):
     """Processor for normalizing audio data."""
     def __init__(self, norm_type: lps_signal.Normalization) -> None:
@@ -171,6 +170,45 @@ class Correlation(rvt_pipeline.Preprocessing):
 
         return Correlation(file_map[selected_name])
 
+class BandPass(rvt_pipeline.Preprocessing):
+    """Processor for applying a band-pass filter to the audio signal."""
+
+    def __init__(self, min_freq: float, max_freq: float, order: int) -> None:
+        self.min_freq = min_freq
+        self.max_freq = max_freq
+        self.order = order
+
+    def process(self, fs: int, input_data: np.ndarray) -> typing.Tuple[int, np.ndarray]:
+        """
+        Applies a high-pass filter to the input data.
+
+        Args:
+            fs (int): Sampling frequency of the input data.
+            input_data (np.ndarray): The audio signal to be processed.
+
+        Returns:
+            Tuple[int, np.ndarray]: The sampling frequency and the filtered audio signal.
+        """
+        nyquist = 0.5 * fs
+        max_cutoff = self.max_freq / nyquist
+        min_cutoff = self.min_freq / nyquist
+        b, a = signal.butter(self.order, [min_cutoff, max_cutoff], btype='band', analog=False)
+        filtered_data = signal.filtfilt(b, a, input_data)
+        return fs, filtered_data
+
+    @staticmethod
+    def st_config() -> "BandPass":
+        """
+        Configures the high-pass filter processor through Streamlit's interface.
+        
+        Returns:
+            HighPass: A configured high-pass filter processor instance.
+        """
+        min_freq = st.number_input("Frequência mínima de corte (Hz)", min_value=1, value=1)
+        max_freq = st.number_input("Frequência máxima de corte (Hz)", min_value=1, value=3999)
+        order = st.slider("Ordem do filtro", min_value=1, max_value=10, value=1)
+        return BandPass(min_freq, max_freq, order)
+
 def st_show_preprocessing() -> typing.List[rvt_pipeline.Preprocessing]:
     """
     Displays the preprocessing configuration interface and returns the configured processors.
@@ -181,7 +219,8 @@ def st_show_preprocessing() -> typing.List[rvt_pipeline.Preprocessing]:
     available_processes = {
         "Normalization": Normalization,
         "HighPass": HighPass,
-        "Correlation": Correlation
+        "Correlation": Correlation,
+        "BandPass": BandPass
     }
 
     st.markdown(
@@ -229,18 +268,18 @@ def add_preprocessing_options(parser: argparse.ArgumentParser) -> None:
         parser (argparse.ArgumentParser): The argument parser to which the options will be added.
     """
     preprocess_group = parser.add_argument_group("Preprocessing Configuration",
-                                                 "Define the preprocessors applied to the data.")
+                                                "Define the preprocessors applied to the data.")
 
     preprocess_group.add_argument("-p", "--preprocessors", nargs="+",
-                                   choices=["Normalization", "HighPass", "Correlation"],
-                                   help="Select preprocessing steps in the desired order.")
+                                choices=["Normalization", "HighPass", "Correlation"],
+                                help="Select preprocessing steps in the desired order.")
 
     norm_options = list(lps_signal.Normalization)
     norm_options.pop(-1)
     norm_choices = [str(opt.name) for opt in norm_options]
 
     norm_group = parser.add_argument_group("Normalization Parameters",
-                                           "Configure the Normalization.")
+                                        "Configure the Normalization.")
 
     norm_group.add_argument("--norm-type", type=str, choices=norm_choices,
                             default=lps_signal.Normalization.MIN_MAX_ZERO_CENTERED.name,
@@ -250,18 +289,30 @@ def add_preprocessing_options(parser: argparse.ArgumentParser) -> None:
                                                 "Configure the HighPass.")
 
     hp_filter_group.add_argument("--cutoff-freq", type=int, default=1000,
-                                 help="Cutoff frequency (Hz).")
+                                help="Cutoff frequency (Hz).")
 
     hp_filter_group.add_argument("--order", type=int, choices=range(1, 11), default=4,
-                                 help="Filter order.")
+                                help="Filter order.")
 
     correlation_group = parser.add_argument_group("Correlation Parameters",
-                                                  "Configure the Correlation.")
+                                                "Configure the Correlation.")
 
     file_map = Correlation.get_file_map(True)
 
     correlation_group.add_argument("--reference-name", type=str, choices=list(file_map.keys()),
-                                   help="Name of the reference file for correlation.")
+                                help="Name of the reference file for correlation.")
+
+    band_filter_group = parser.add_argument_group("Band-Pass Filter Parameters",
+                                                "Configure the BandPass.")
+
+    band_filter_group.add_argument("--min_freq", type=int, default=1,
+                                help="Minimum frequency (Hz) in band.")
+
+    band_filter_group.add_argument("--max_freq", type=int, default=1000,
+                                help="Maximum frequency (Hz) in band.")
+
+    band_filter_group.add_argument("--band-order", type=int, default=3,
+                                help="Filter order.")
 
 def get_preprocessors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Preprocessing]:
     """
@@ -283,6 +334,7 @@ def get_preprocessors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Prep
             Correlation(file_map[args.reference_name])
             if args.reference_name and args.reference_name in file_map else None
         ),
+        "BandPass": lambda: BandPass(args.min_freq, args.max_freq, args.band_order),
     }
 
     for process in args.preprocessors or []:

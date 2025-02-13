@@ -11,6 +11,7 @@ import streamlit as st
 import streamlit_sortables as ss
 
 import lps_rvt.pipeline as rvt_pipeline
+import lps_rvt.preprocessing as rvt_preprocessing
 
 class Threshold(rvt_pipeline.Detector):
     """Detects events based on a simple threshold comparison."""
@@ -29,7 +30,7 @@ class Threshold(rvt_pipeline.Detector):
             sample_to_check (int): The list of sample indices to check.
 
         Returns:
-            float: _description_
+            float: confidence
         """
         if sample_to_check + self.window_size <= len(input_data):
             return np.mean(input_data[sample_to_check:sample_to_check + self.window_size])
@@ -65,7 +66,7 @@ class Energy(rvt_pipeline.Detector):
             sample_to_check (int): The list of sample indices to check.
 
         Returns:
-            float: _description_
+            float: confidence
         """
         if sample_to_check - self.ref_window >= 0 and \
                     sample_to_check + self.analysis_window <= len(input_data):
@@ -90,9 +91,9 @@ class Energy(rvt_pipeline.Detector):
         Returns:
             Energy: A configured energy detector instance.
         """
-        ref_window = st.number_input("Janela de referência", min_value=1, value=8000)
-        analysis_window = st.number_input("Janela de análise", min_value=1, value=80)
-        threshold = st.number_input("Limiar de proporção (x referência)", value=10)
+        ref_window = st.number_input("Janela de referência (Energy)", min_value=1, value=8000)
+        analysis_window = st.number_input("Janela para análise (Energy)", min_value=1, value=80)
+        threshold = st.number_input("Limiar de proporção (x referência) (Energy)", value=10)
         return Energy(ref_window, analysis_window, threshold)
 
 class ZScore(rvt_pipeline.Detector):
@@ -113,7 +114,7 @@ class ZScore(rvt_pipeline.Detector):
             sample_to_check (int): The list of sample indices to check.
 
         Returns:
-            float: _description_
+            float: confidence
         """
         if sample_to_check - self.ref_window >= 0 and \
                 sample_to_check + self.analysis_window <= len(input_data):
@@ -163,7 +164,7 @@ class Wavelet(rvt_pipeline.Detector):
             sample_to_check (int): The list of sample indices to check.
 
         Returns:
-            float: _description_
+            float: confidence
         """
         if sample_to_check + self.window_size <= len(input_data):
             analysis_data = input_data[sample_to_check: sample_to_check + self.window_size]
@@ -191,6 +192,49 @@ class Wavelet(rvt_pipeline.Detector):
         level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1)
         return Wavelet(window_size, threshold, wavelet, level)
 
+class EnergyBand(rvt_pipeline.Detector):
+    """Detects events based on an increase in energy compared
+    to a reference window in determined band."""
+
+    def __init__(self, ref_window: int, analysis_window: int, threshold: float,
+                 min_freq: float, max_freq: float, order: int):
+        super().__init__(threshold)
+        self.detector = Energy(ref_window, analysis_window, threshold)
+        self.preprocessing = rvt_preprocessing.BandPass(min_freq, max_freq, order)
+
+    @overrides.overrides
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The list of sample indices to check.
+
+        Returns:
+            float: confidence
+        """
+        input_data = self.preprocessing.process(8000, input_data)
+            # pylint: disable=W0511 #TODO fix this to work with diferent fs
+        return self.detector.calc_confidence(input_data, sample_to_check)
+
+    @staticmethod
+    def st_config() -> "EnergyBand":
+        """
+        Configures the energy detector processor through Streamlit's interface.
+
+        Returns:
+            Energy: A configured energy detector instance.
+        """
+        ref_window = st.number_input("Janela de referência (EnergyBand)", min_value=1, value=8000)
+        analysis_window = st.number_input("Janela de análise (EnergyBand)", min_value=1, value=80)
+        threshold = st.number_input("Limiar de proporção (x referência) (EnergyBand)", value=10)
+        min_freq = st.number_input("Frequência mínima de corte (Hz) (EnergyBand)",
+                                                                        min_value=1, value=1)
+        max_freq = st.number_input("Frequência máxima de corte (Hz) (EnergyBand)",
+                                                                        min_value=1, value=3999)
+        order = st.slider("Ordem do filtro (EnergyBand)", min_value=1, max_value=10, value=1)
+        return EnergyBand(ref_window, analysis_window, threshold, min_freq, max_freq, order)
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
@@ -198,7 +242,8 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
         "Threshold": Threshold,
         "Energy": Energy,
         "Z-score": ZScore,
-        "Wavelet": Wavelet
+        "Wavelet": Wavelet,
+        "EnergyBand": EnergyBand
     }
 
     st.markdown(
@@ -247,7 +292,7 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
         parser (argparse.ArgumentParser): The argument parser to which the options will be added.
     """
     detector_group = parser.add_argument_group("Detector Configuration",
-                                               "Define the detectors used in the pipeline.")
+                                            "Define the detectors used in the pipeline.")
 
     detector_group.add_argument("-d", "--detectors", nargs="+",
                                 choices=["Threshold", "Energy", "Z-score"],
@@ -285,6 +330,20 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
     detector_group.add_argument("--wavelet_level", type=int, default=1,
                                 help="Decomposition Level for Wavelet Detector.")
 
+    # EnergyBand parameters
+    detector_group.add_argument("--energyband-ref_window", type=int, default=8000,
+                                help="Reference window size for the EnergyBand Detector.")
+    detector_group.add_argument("--energyband-analysis-window", type=int, default=80,
+                                help="Analysis window size for the EnergyBand Detector.")
+    detector_group.add_argument("--energyband-threshold", type=float, default=10.0,
+                                help="Threshold factor for the EnergyBand Detector.")
+    detector_group.add_argument("--energyband-min-freq", type=float, default=1.0,
+                                help="Minimum frequency for the EnergyBand Detector.")
+    detector_group.add_argument("--energyband-max-freq", type=float, default=3999.0,
+                                help="Maximum frequency for the EnergyBand Detector.")
+    detector_group.add_argument("--energyband-order", type=int, default=1.0,
+                                help="Order for the EnergyBand Detector.")
+
 def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector]:
     """
     Returns a list of configured detector instances based on the parsed arguments.
@@ -299,15 +358,21 @@ def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector
 
     available_detectors = {
         "Threshold": lambda: Threshold(args.threshold_window,
-                                               args.threshold_value),
+                                            args.threshold_value),
         "Energy": lambda: Energy(args.energy_ref_window,
-                                         args.energy_analysis_window,
-                                         args.energy_threshold),
+                                        args.energy_analysis_window,
+                                        args.energy_threshold),
         "Z-score": lambda: ZScore(args.zscore_ref_window,
                                          args.zscore_analysis_window,
                                          args.zscore_threshold),
         "Wavelet": lambda: Wavelet(args.wavelet_window, args.wavelet_threshold,
-                                   args.wavelet_type, args.wavelet_level)
+                                   args.wavelet_type, args.wavelet_level),
+        "EnergyBand": lambda: EnergyBand(args.energyband_ref_window,
+                                        args.energyband_analysis_window,
+                                        args.energyband_threshold,
+                                        args.energyband_min_freq,
+                                        args.energyband_max_freq,
+                                        args.energyband_order)
     }
 
     for detector in args.detectors or []:

@@ -54,6 +54,7 @@ Test File ID,Artifact File ID,Caracterization,Bouy,Offset
 8,Tiro_8-Boia_4,Tiro 8,4,00:00:30.000
 8,Tiro_9-Boia_4,Tiro 9,4,00:00:30.000
 8,Tiro_9-Boia_4,Ricochete,4,00:00:41.777
+8,Tiro_10-Boia_4,Tiro 10,4,00:00:30.000
 9,Tiro_1-Boia_5,Tiro 1,5,00:00:30.000
 9,Tiro_2-Boia_5,Tiro 2,5,00:00:30.000
 9,Tiro_2-Boia_5,Ricochete,5,00:00:43.834
@@ -86,6 +87,7 @@ Test File ID,Artifact File ID,Caracterization,Bouy,Offset
 13,Tiro_13-Boia_2,Tiro 13,2,00:00:30.000
 13,Tiro_14-Boia_2,Tiro 14,2,00:00:30.000
 13,Tiro_15-Boia_2,Tiro 15,2,00:00:30.000
+13,Tiro_16-Boia_2,Tiro 16,2,00:00:30.000
 14,Tiro_17-Boia_2,Tiro 17,2,00:00:30.000
 14,Tiro_18-Boia_2,Tiro 18,2,00:00:30.000
 14,Tiro_19-Boia_2,Tiro 19,2,00:00:30.000

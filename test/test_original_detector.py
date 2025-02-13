@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-import lps_rvt.types as rvt
+import lps_rvt.rvt_types as rvt
 import lps_rvt.dataloader as lps_loader
 import lps_rvt.pipeline as lps_pipeline
 
