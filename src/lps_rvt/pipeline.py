@@ -37,9 +37,25 @@ class Preprocessing(abc.ABC):
 class Detector(abc.ABC):
     """Abstract base class for detection algorithms."""
 
+    def __init__(self, threshold: float):
+        super().__init__()
+        self.threshold = threshold
+
     @abc.abstractmethod
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The list of sample indices to check.
+
+        Returns:
+            float: _description_
+        """
+
     def detect(self, input_data: np.ndarray, samples_to_check: typing.List[int]) \
-            -> typing.List[int]:
+            -> typing.Tuple[typing.List[int], typing.List[int]]:
         """
         Detects events in the input data.
 
@@ -48,8 +64,22 @@ class Detector(abc.ABC):
             samples_to_check (List[int]): The list of sample indices to check.
 
         Returns:
-            List[int]: A list of sample indices where events were detected.
+            Tuple[
+                List[int]: A list of sample indices where events were detected.,
+                List[float]: A list of confidence in this detection
+                ]
         """
+        detected_events = []
+        confidences = []
+
+        for idx in samples_to_check:
+            confidence = self.calc_confidence(input_data=input_data, sample_to_check=idx)
+
+            if confidence > self.threshold:
+                detected_events.append(idx)
+                confidences.append(confidence)
+
+        return detected_events, confidences
 
     def __str__(self) -> str:
         """Returns the name of the detector class."""
@@ -300,15 +330,22 @@ class Pipeline:
         self.debounce_steps = debounce_steps
         self.loader = loader
 
-    def _edge_filter(self, samples: typing.List[int]) -> typing.List[int]:
+    def _edge_filter(self, samples: typing.List[int],
+                     confidence: typing.List[float]) -> typing.List[int]:
         if not samples:
             return []
 
-        edges = [samples[0]]
+        edges = []
+        current_block = [0]
 
         for i in range(1, len(samples)):
             if samples[i] - samples[i - 1] >  self.debounce_steps * self.sample_step:
-                edges.append(samples[i])
+                selected_confidence = [confidence[i] for i in current_block]
+                index = np.argmax(selected_confidence)
+                edges.append(samples[current_block[index]])
+                current_block.clear()
+
+            current_block.append(i)
 
         return edges
 
@@ -341,8 +378,8 @@ class Pipeline:
         current_samples_to_check = samples_to_check.copy()
 
         for detector in self.detectors:
-            detections = detector.detect(data, current_samples_to_check)
-            detections = self._edge_filter(detections)
+            detections, confidence = detector.detect(data, current_samples_to_check)
+            detections = self._edge_filter(detections, confidence)
             evaluation = detector.evaluate(result.expected_detections,
                                            result.expected_rebounds,
                                            samples_to_check,
