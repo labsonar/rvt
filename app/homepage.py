@@ -1,5 +1,7 @@
 """Streamlit homepage to test pipeline."""
 import typing
+import ast
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -15,6 +17,14 @@ class Homepage:
 
     def __init__(self) -> None:
         st.set_page_config(page_title="RVT", layout="wide")
+        if "table2_data" not in st.session_state:
+            st.session_state["table2_data"] = []
+
+        if "current_result" not in st.session_state:
+            st.session_state["current_result"] = None
+
+        if "current_metrics" not in st.session_state:
+            st.session_state["current_metrics"] = None
 
     def show_dataloader_selection(self) -> typing.List[int]:
         """
@@ -32,7 +42,7 @@ class Homepage:
                                                 default=[rvt.Ammunition.EXSUP.name])
         selected_buoys = st.multiselect("Selecione os IDs das Boias",
                                             options=range(1, 6),
-                                            default=[4])
+                                            default=[])
         selected_subsets = st.multiselect("Selecione os Subconjuntos",
                                             subset_options,
                                             default=[rvt.Subset.TRAIN.name])
@@ -62,6 +72,8 @@ class Homepage:
         configure preprocessing, and start the processing of files and displaying results.
         """
         show_results = False
+        save = False
+        show_details = False
         with st.sidebar:
 
             with st.expander("Arquivos analisados", expanded=False):
@@ -80,6 +92,15 @@ class Homepage:
             with st.expander("Exibição dos resultados", expanded=False):
                 loader_type, plot_type, metrics = rvt_metrics.st_show_metrics_config()
 
+            if plot_type == "Figuras de mérito":
+                st.markdown("---")
+
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    save = st.toggle("Salvar", value=False)
+                with col2:
+                    show_details = st.toggle("Exibir detalhes", value=False)
+
             if st.button("Executar"):
                 show_results = True
 
@@ -89,7 +110,8 @@ class Homepage:
         with col2:
             st.image("./data/logo.png", width=300)
 
-        loader = rvt_loader.ArtifactLoader() if loader_type == "Artefato" else rvt_loader.DataLoader()
+        loader = rvt_loader.ArtifactLoader() if loader_type == "Artefato" \
+                                            else rvt_loader.DataLoader()
         selected_files = loader.get_files(ammunition_types, buoys, subsets)
 
         if show_results:
@@ -100,43 +122,76 @@ class Homepage:
                                             tolerance_after=tolerance_after,
                                             debounce_steps=debounce_steps,
                                             loader=loader)
-            result_dict = pipeline.apply(selected_files)
+            st.session_state["current_result"] = pipeline.apply(selected_files)
+
+        if detectors is not None and st.session_state["current_result"] is not None:
 
             if plot_type == "Plot no tempo":
-                for _, result in result_dict.items():
+                for _, result in st.session_state["current_result"].items():
                     result.final_plot(metrics)
-            else:
 
-                # total_tp = total_fn = total_fp = 0
-                # table_data = []
-                # table2_data = []
+            elif show_results:
+                table_data = []
 
-                # for file_id, result in result_dict.items():
-                #     _, fp, fn, tp = result.get_cm().ravel()
-                #     total_tp += tp
-                #     total_fn += fn
-                #     total_fp += fp
-                #     table_data.append({"Arquivo": file_id,
-                #                     "Prob. Detecção": f"{tp}/{tp + fn}",
-                #                     "Falsos Positivos": fp})
+                if (st.session_state["current_metrics"] != metrics):
+                    st.session_state["current_metrics"] = metrics
+                    st.session_state["table2_data"] = []
 
-                # table2_data.insert(0, {"Prob. Detecção": f"{total_tp}/{total_tp + total_fn}",
-                #                     "Falsos Positivos": f"{total_fp}"})
+                exp_metric_dict = {
+                    "Experimento": len(st.session_state["table2_data"])
+                }
+                for metric in metrics:
+                    exp_metric_dict[str(metric)] = []
 
-                metric_list = [str(x) for x in metrics]
-                df = pd.DataFrame(columns=["Arquivo"] + metric_list)
-                df_internal = pd.DataFrame(columns=metric_list)
-                df2 = pd.DataFrame(columns=metric_list)
-
-                for index, (file_id, result) in enumerate(result_dict.items()):
+                for file_id, result in st.session_state["current_result"].items():
                     cm = result.get_cm().ravel()
-                    df.loc[index, "Arquivo"] = file_id
+
+                    metric_dict = {
+                        "Arquivo": file_id
+                    }
                     for metric in metrics:
-                        df_internal.loc[index, str(metric)] = 100*metric.apply(cm)[0]
-                        df.loc[index, str(metric)] = f"{100*metric.apply(cm)[0] :.2f}%"
+                        metric_dict[str(metric)] = 100 * metric.apply(cm)[0]
+                        exp_metric_dict[str(metric)].append(metric.apply(cm)[0])
+
+                    table_data.append(metric_dict)
 
                 for metric in metrics:
-                    df2.loc[0, str(metric)] = f"{df_internal.loc[:, str(metric)].mean():.2f}% ± {df_internal.loc[:, str(metric)].std():.2f}%"
+                    exp_metric_dict[str(metric)] = np.sum(exp_metric_dict[str(metric)])
+
+                df = pd.DataFrame(table_data)
+
+                exp_config = {
+                    "Detectors": str([d.get_details() for d in detectors]),
+                    "Preprocessors": str([p.get_details() for p in preprocessors]),
+                    'Ammunition': str([str(ammu) for ammu in ammunition_types]) if ammunition_types is not None else "",
+                    'Buoy': str([str(buoy) for buoy in buoys]) if buoys is not None else "",
+                    'Subset': str([str(subset) for subset in subsets]) if subsets is not None else "",
+                    "Sample Step": sample_step,
+                    "Tolerance Before": tolerance_before,
+                    "Tolerance After": tolerance_after,
+                    "Debounce Steps": debounce_steps,
+                    "Loader": loader_type,
+                }
+
+                new_entry = exp_metric_dict | exp_config
+
+                if save:
+                    if new_entry not in st.session_state["table2_data"]:
+                        st.session_state["table2_data"].insert(0, new_entry)
+
+                table2_data = st.session_state["table2_data"].copy()
+
+                if not save:
+                    table2_data.insert(0, new_entry)
+
+                df2 = pd.DataFrame(table2_data)
+
+                n_cols = len(metrics) + 1
+
+                if not show_details:
+                    df2 = pd.concat([df2.iloc[:, :n_cols],
+                                    df2.iloc[:, n_cols:].loc[:, df2.iloc[:, n_cols:].nunique() > 1]],
+                                    axis=1)
 
                 def highlight_rows(s):
                     return ['background-color: #f2f2f2' if i % 2 == 0 else \
@@ -145,26 +200,64 @@ class Homepage:
                 styled_df = df.style \
                     .apply(highlight_rows, axis=0) \
                     .set_properties(**{'border': '1px solid black', 'text-align': 'center',
-                                    'vertical-align': 'middle', 'color': 'black'}) \
+                                    'vertical-align': 'middle'}) \
                     .set_table_styles([
-                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'), ('color', 'black'),
-                                                        ('font-weight', 'bold'), ('text-align', 'center')]},
-                        {'selector': 'tbody td', 'props': [('border', '1px solid black'), ('text-align', 'center')]}
+                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'),
+                                                        ('color', 'white'),
+                                                        ('font-weight', 'bold'),
+                                                        ('text-align', 'center')]},
+                        {'selector': 'tbody td', 'props': [('border', '1px solid black'),
+                                                        ('text-align', 'center')]}
                     ])
 
                 styled2_df = df2.style \
                     .apply(highlight_rows, axis=0) \
                     .set_properties(**{'border': '1px solid black', 'text-align': 'center',
-                                    'vertical-align': 'middle', 'color': 'black'}) \
+                                    'vertical-align': 'middle'}) \
                     .set_table_styles([
-                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'), ('color', 'black'),
-                                                        ('font-weight', 'bold'), ('text-align', 'center')]},
-                        {'selector': 'tbody td', 'props': [('border', '1px solid black'), ('text-align', 'center')]}
+                        {'selector': 'thead th', 'props': [('background-color', '#4CAF50'),
+                                                        ('color', 'white'),
+                                                        ('font-weight', 'bold'),
+                                                        ('text-align', 'center')]},
+                        {'selector': 'tbody td', 'props': [('border', '1px solid black'),
+                                                        ('text-align', 'center')]}
                     ])
-
                 st.dataframe(styled2_df, use_container_width=False, hide_index=True)
                 st.markdown("---")
                 st.dataframe(styled_df, use_container_width=False, hide_index=True)
+
+            else:
+
+                table2_data = st.session_state["table2_data"].copy()
+
+                if len(table2_data) > 0:
+
+                    df2 = pd.DataFrame(table2_data)
+
+                    n_cols = len(st.session_state["current_metrics"]) + 1
+
+                    if not show_details:
+                        df2 = pd.concat([df2.iloc[:, :n_cols],
+                                df2.iloc[:, n_cols:].loc[:, df2.iloc[:, n_cols:].nunique() > 1]],
+                                axis=1)
+
+                    def highlight_rows(s):
+                        return ['background-color: #f2f2f2' if i % 2 == 0 else \
+                                'background-color: #ffffff' for i in range(len(s))]
+
+                    styled2_df = df2.style \
+                        .apply(highlight_rows, axis=0) \
+                        .set_properties(**{'border': '1px solid black', 'text-align': 'center',
+                                        'vertical-align': 'middle'}) \
+                        .set_table_styles([
+                            {'selector': 'thead th', 'props': [('background-color', '#4CAF50'),
+                                                            ('color', 'white'),
+                                                            ('font-weight', 'bold'),
+                                                            ('text-align', 'center')]},
+                            {'selector': 'tbody td', 'props': [('border', '1px solid black'),
+                                                            ('text-align', 'center')]}
+                        ])
+                    st.dataframe(styled2_df, use_container_width=False, hide_index=True)
 
 if __name__ == "__main__":
     app = Homepage()

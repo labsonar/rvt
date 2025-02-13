@@ -34,6 +34,16 @@ class Preprocessing(abc.ABC):
             Tuple[int, np.ndarray]: The sampling frequency and the processed data.
         """
 
+    def get_details(self) -> typing.Dict:
+        """Retorna o dicionario de atributos"""
+        return {
+            str(self): self.__dict__
+        }
+
+    def __str__(self) -> str:
+        """Returns the name of the preprocessor class."""
+        return self.__class__.__name__
+
 class Detector(abc.ABC):
     """Abstract base class for detection algorithms."""
 
@@ -80,6 +90,12 @@ class Detector(abc.ABC):
                 confidences.append(confidence)
 
         return detected_events, confidences
+
+    def get_details(self) -> typing.Dict:
+        """Retorna o dicionario de atributos"""
+        return {
+            str(self): self.__dict__
+        }
 
     def __str__(self) -> str:
         """Returns the name of the detector class."""

@@ -36,6 +36,7 @@ class Threshold(rvt_pipeline.Detector):
             return np.mean(input_data[sample_to_check:sample_to_check + self.window_size])
         return 0
 
+
     @staticmethod
     def st_config() -> "Threshold":
         """
@@ -189,7 +190,7 @@ class Wavelet(rvt_pipeline.Detector):
         window_size = st.number_input("Janela de análise", min_value=1, value=2000)
         threshold = st.number_input("Limiar de detecção da Wavelet", min_value=0.0, value=0.1)
         wavelet = st.selectbox("Tipo de Wavelet", wavelet_list)
-        level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1)
+        level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1, value=2)
         return Wavelet(window_size, threshold, wavelet, level)
 
 class EnergyBand(rvt_pipeline.Detector):
@@ -265,7 +266,7 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
 
     selected_detectors = st.multiselect("Selecione os detectores",
                                         list(available_detectors.keys()),
-                                        default=["Z-score"])
+                                        default=["Wavelet"])
 
     if len(selected_detectors) > 1:
         st.markdown("Defina a ordem")

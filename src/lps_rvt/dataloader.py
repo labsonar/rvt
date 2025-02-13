@@ -67,8 +67,10 @@ class DataLoader(BaseLoader):
     def __init__(self,
                  description_filename: str = "./data/docs/test_files_description.csv",
                  artifacts_filename: str = "./data/docs/test_artifacts.csv"):
-        super().__init__(description_filename, artifacts_filename,
-                         "Test File ID","./data/test_files")
+        super().__init__(description_filename,
+                         artifacts_filename,
+                         "Test File ID",
+                         "./data/test_files")
 
 class ArtifactLoader(BaseLoader):
     """ Loader for artifact data """
@@ -77,8 +79,10 @@ class ArtifactLoader(BaseLoader):
     def __init__(self,
                  description_filename: str = "./data/docs/test_files_description.csv",
                  artifacts_filename: str = "./data/docs/artifacts_ids.csv"):
-        super().__init__(description_filename, artifacts_filename,
-                         "Artifact File ID", "./data/artifacts")
+        super().__init__(description_filename,
+                         artifacts_filename,
+                         "Artifact File ID",
+                         "./data/artifacts")
 
     def get_files(self,
                   ammunition_types: typing.Optional[typing.List[rvt.Ammunition]] = None,

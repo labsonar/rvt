@@ -17,3 +17,6 @@ class Subset(enum.Enum):
     VALIDATION = 1
     VAL = 1
     TEST = 2
+
+    def __str__(self) -> str:
+        return self.name.split(".")[-1].lower()

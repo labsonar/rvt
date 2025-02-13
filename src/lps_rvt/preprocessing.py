@@ -241,7 +241,8 @@ def st_show_preprocessing() -> typing.List[rvt_pipeline.Preprocessing]:
         """
 
     selected_processes = st.multiselect("Selecione os passos de processamento",
-                                        list(available_processes.keys()))
+                                        list(available_processes.keys()),
+                                        default=["Normalization"])
 
     if len(selected_processes) > 1:
         st.write("Defina a ordem")
