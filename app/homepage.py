@@ -141,7 +141,10 @@ class Homepage:
                     "Experimento": len(st.session_state["table2_data"])
                 }
                 for metric in metrics:
-                    exp_metric_dict[str(metric)] = []
+                    exp_metric_dict[str(metric)] = {
+                        'num': [],
+                        'den': []
+                    }
 
                 for file_id, result in st.session_state["current_result"].items():
                     cm = result.get_cm().ravel()
@@ -150,13 +153,15 @@ class Homepage:
                         "Arquivo": file_id
                     }
                     for metric in metrics:
-                        metric_dict[str(metric)] = 100 * metric.apply(cm)[0]
-                        exp_metric_dict[str(metric)].append(metric.apply(cm)[0])
+                        r = metric.apply(cm)
+                        metric_dict[str(metric)] = f"{r[1]}/{r[2]}"
+                        exp_metric_dict[str(metric)]['num'].append(r[1])
+                        exp_metric_dict[str(metric)]['den'].append(r[2])
 
                     table_data.append(metric_dict)
 
                 for metric in metrics:
-                    exp_metric_dict[str(metric)] = np.sum(exp_metric_dict[str(metric)])
+                    exp_metric_dict[str(metric)] = f"{np.sum(exp_metric_dict[str(metric)]['num'])}/{np.sum(exp_metric_dict[str(metric)]['den'])}"
 
                 df = pd.DataFrame(table_data)
 

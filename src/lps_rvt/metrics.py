@@ -1,4 +1,4 @@
-""" 
+"""
 Module to provide a set of metrics for audio signal processing within a pipeline.
 """
 
@@ -29,7 +29,7 @@ class Metric(enum.Enum):
 
     def __str__(self):
         """Return the string representation of the Metric enum."""
-        return str(self.name).lower().replace("_", " ")
+        return str(self.name).replace("_", " ").title()
 
     def apply(self, cm: np.ndarray) -> typing.Tuple[float, int, int]:
         """Apply Metric to confusion matrix.
@@ -109,7 +109,8 @@ def st_show_metrics_config():
 
     selected_metrics = st.multiselect("Selecione as metricas",
                                         list(available_metrics.keys()),
-                                        default=["detection probability", "precision"])
+                                        default=[str(Metric.DETECTION_PROBABILITY),
+                                                 str(Metric.FALSE_DISCOVERY_RATE)])
 
     if len(selected_metrics) > 1:
         st.markdown("Defina a ordem")
