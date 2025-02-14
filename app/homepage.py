@@ -61,9 +61,9 @@ class Homepage:
         It returns the tuple of parameters files based on the user's choices.
         """
         sample_step = st.number_input("Passo de análise (amostras)", min_value=1, value=80)
-        tolerance_before = st.number_input("Tolerância antes (amostras)", min_value=5, value=80)
+        tolerance_before = st.number_input("Tolerância antes (amostras)", min_value=5, value=160)
         tolerance_after = st.number_input("Tolerância depois (amostras)", min_value=5, value=240)
-        debounce_steps = st.number_input("Debounce_steps (passos)", min_value=1, value=50)
+        debounce_steps = st.number_input("Debounce_steps (passos)", min_value=1, value=20)
         return sample_step, tolerance_before, tolerance_after, debounce_steps
 
     def run(self) -> None:

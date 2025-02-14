@@ -8,12 +8,35 @@ import scipy.io as scipy
 
 import torch
 import torch.utils.data as torch_data
+import torchaudio
 
 import lps_rvt.rvt_types as rvt
 import lps_sp.signal as lps_sp
 
+
+class SpectrogramTransform(torch.nn.Module):
+    def __init__(self, n_fft=512, hop_length=128, power=2):
+        super().__init__()
+        self.spectrogram = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=hop_length, power=power)
+
+    def forward(self, waveform):
+        if len(waveform.shape) == 1:
+            waveform = waveform.unsqueeze(0)
+        return self.spectrogram(waveform)
+
+class MelSpectrogramTransform(torch.nn.Module):
+    def __init__(self, n_fft=512, hop_length=128, n_mels=64, power=2):
+        super().__init__()
+        self.mel_spectrogram = torchaudio.transforms.MelSpectrogram(n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, power=power)
+
+    def forward(self, waveform):
+        if len(waveform.shape) == 1:
+            waveform = waveform.unsqueeze(0)
+        return self.mel_spectrogram(waveform)
+
 class AudioDataset(torch_data.Dataset):
     """Class to represent"""
+
     def __init__(self, subset: rvt.Subset=None, transform=None, csv_file: str = "./data/docs/ml_info.csv"):
         """
         Args:
@@ -42,16 +65,17 @@ class AudioDataset(torch_data.Dataset):
 
         audio_data = audio_data / np.max(np.abs(audio_data), axis=0)
 
-        if self.transform:
-            audio_data = self.transform(audio_data)
-
         audio_tensor = torch.tensor(audio_data, dtype=torch.float32)
+
+        if self.transform:
+            audio_tensor = self.transform(audio_tensor)
+
         classification_tensor = torch.tensor(classification, dtype=torch.long)
 
         return audio_tensor, classification_tensor
 
     @staticmethod
-    def get_dataloaders(batch_size=32) -> typing.Dict[rvt.Subset, 'AudioDataset']:
+    def get_dataloaders(batch_size=32, transform=None) -> typing.Dict[rvt.Subset, 'AudioDataset']:
         """
         Cria os dataloaders para os três subsets: 'train', 'val', 'test'.
 
@@ -65,7 +89,7 @@ class AudioDataset(torch_data.Dataset):
         dataloaders = {}
 
         for subset in rvt.Subset:
-            dataset = AudioDataset(subset=subset)
+            dataset = AudioDataset(subset=subset, transform=transform)
             dataloaders[subset] = torch_data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
         return dataloaders

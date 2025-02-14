@@ -14,6 +14,7 @@ import torch
 import ml.models.mlp as ml
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
+import lps_rvt.ml_loader as rvt_ml
 
 class Threshold(rvt_pipeline.Detector):
     """Detects events based on a simple threshold comparison."""
@@ -189,7 +190,7 @@ class Wavelet(rvt_pipeline.Detector):
 
         wavelet_list = ["haar", "db4", "sym2", "coif2"]
 
-        window_size = st.number_input("Janela de análise", min_value=1, value=2000)
+        window_size = st.number_input("Janela de análise", min_value=1, value=1000)
         threshold = st.number_input("Limiar de detecção da Wavelet", min_value=0.0, value=0.1)
         wavelet = st.selectbox("Tipo de Wavelet", wavelet_list)
         level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1, value=2)
@@ -242,13 +243,14 @@ class EnergyBand(rvt_pipeline.Detector):
 class MLP(rvt_pipeline.Detector):
     """Detects events based on a simple MLP model."""
 
-    def __init__(self, threshold: float, model_file="./data/ml/mlp/model.pkl"):
+    def __init__(self, threshold: float, model_file="./data/ml/models/mlp_spectrogram.pkl"):
         super().__init__(threshold)
         self.loaded = False
         self.model_file = model_file
         self.device = None
         self.model = None
         self.n_samples = None
+        self.transform = None
 
     def _load(self):
         if self.loaded:
@@ -256,9 +258,9 @@ class MLP(rvt_pipeline.Detector):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.model = ml.MLP.load(self.model_file).to(self.device)
         self.model.eval()
-        self.n_samples = self.model.model[1].in_features
+        self.n_samples = 2000
         self.loaded = True
-
+        self.transform = rvt_ml.SpectrogramTransform().to(self.device)
 
     @overrides.overrides
     def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
@@ -274,6 +276,7 @@ class MLP(rvt_pipeline.Detector):
         """
         self._load()
         data_tensor = torch.tensor(input_data[sample_to_check:sample_to_check+self.n_samples], dtype=torch.float32, device=self.device).unsqueeze(0)
+        data_tensor = self.transform(data_tensor)
         with torch.no_grad():
             confidence = self.model(data_tensor).item()
         return confidence
@@ -287,7 +290,7 @@ class MLP(rvt_pipeline.Detector):
         Returns:
             Threshold: A configured threshold detector instance.
         """
-        threshold = st.number_input("Limiar", value=0.04)
+        threshold = st.number_input("Limiar", value=0.3)
         return MLP(threshold)
 
 
