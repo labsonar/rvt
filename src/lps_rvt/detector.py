@@ -1,6 +1,7 @@
 """
 Module to provide a set of detectors for audio signal processing within a pipeline.
 """
+import enum
 import typing
 import argparse
 import overrides
@@ -11,7 +12,9 @@ import streamlit as st
 import streamlit_sortables as ss
 import torch
 
-import ml.models.mlp as ml
+import ml.models.base_model as lps_ml
+import ml.models.mlp as lps_mlp
+import ml.models.cnn as lps_cnn
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
 import lps_rvt.ml_loader as rvt_ml
@@ -240,25 +243,32 @@ class EnergyBand(rvt_pipeline.Detector):
         order = st.slider("Ordem do filtro (EnergyBand)", min_value=1, max_value=10, value=1)
         return EnergyBand(ref_window, analysis_window, threshold, min_freq, max_freq, order)
 
-class MLP(rvt_pipeline.Detector):
-    """Detects events based on a simple MLP model."""
+class MLModels(enum.Enum):
+    MLP = 0
+    CNN = 1
 
-    def __init__(self, threshold: float, model_file="./data/ml/models/mlp_spectrogram.pkl"):
+    def __str__(self):
+        return self.name.split(".")[-1].lower()
+
+class ML(rvt_pipeline.Detector):
+    """Detects events using an machine learning models."""
+
+    def __init__(self, model_type: MLModels, threshold: float, model_file: str = None):
         super().__init__(threshold)
+        self.model_type = model_type
         self.loaded = False
-        self.model_file = model_file
+        self.model_file = model_file or f"./data/ml/models/{model_type}_spectrogram.pkl"
         self.device = None
         self.model = None
-        self.n_samples = None
+        self.n_samples = 2000
         self.transform = None
 
     def _load(self):
         if self.loaded:
             return
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model = ml.MLP.load(self.model_file).to(self.device)
+        self.model = lps_ml.BaseModel.load(self.model_file).to(self.device)
         self.model.eval()
-        self.n_samples = 2000
         self.loaded = True
         self.transform = rvt_ml.SpectrogramTransform().to(self.device)
 
@@ -269,83 +279,30 @@ class MLP(rvt_pipeline.Detector):
 
         Args:
             input_data (np.ndarray): The data to search for events.
-            sample_to_check (int): The list of sample indices to check.
+            sample_to_check (int): The sample index to check.
 
         Returns:
             float: confidence
         """
         self._load()
         data_tensor = torch.tensor(input_data[sample_to_check:sample_to_check+self.n_samples], dtype=torch.float32, device=self.device).unsqueeze(0)
-        data_tensor = self.transform(data_tensor)
-        with torch.no_grad():
-            confidence = self.model(data_tensor).item()
-        return confidence
-
-
-    @staticmethod
-    def st_config() -> "Threshold":
-        """
-        Configures the threshold detector processor through Streamlit's interface.
-
-        Returns:
-            Threshold: A configured threshold detector instance.
-        """
-        threshold = st.number_input("Limiar", value=0.3)
-        return MLP(threshold)
-
-class CNN(rvt_pipeline.Detector):
-    """Detects events based on a simple MLP model."""
-
-    def __init__(self, threshold: float, model_file="./data/ml/models/cnn_spectrogram.pkl"):
-        super().__init__(threshold)
-        self.loaded = False
-        self.model_file = model_file
-        self.device = None
-        self.model = None
-        self.n_samples = None
-        self.transform = None
-
-    def _load(self):
-        if self.loaded:
-            return
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model = ml.MLP.load(self.model_file).to(self.device)
-        self.model.eval()
-        self.n_samples = 2000
-        self.loaded = True
-        self.transform = rvt_ml.SpectrogramTransform().to(self.device)
-
-    @overrides.overrides
-    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
-        """
-        Estimate sample confidence as a detection
-
-        Args:
-            input_data (np.ndarray): The data to search for events.
-            sample_to_check (int): The list of sample indices to check.
-
-        Returns:
-            float: confidence
-        """
-        self._load()
-
-        data_tensor = torch.tensor(input_data[sample_to_check:sample_to_check+self.n_samples], dtype=torch.float32, device=self.device)
         data_tensor = self.transform(data_tensor).unsqueeze(0)
         with torch.no_grad():
             confidence = self.model(data_tensor).item()
         return confidence
 
-
     @staticmethod
-    def st_config() -> "Threshold":
+    def st_config() -> 'ML':
         """
-        Configures the threshold detector processor through Streamlit's interface.
+        Configures the detector processor through Streamlit's interface.
 
         Returns:
-            Threshold: A configured threshold detector instance.
+            ML: A configured ML instance.
         """
+        models = MLModels
+        model_type = st.selectbox("Modelo", models, format_func=lambda x: x.name, index=0)
         threshold = st.number_input("Limiar", value=0.3)
-        return CNN(threshold)
+        return ML(MLModels(model_type), threshold)
 
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
@@ -356,8 +313,7 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
         "Z-score": ZScore,
         "Wavelet": Wavelet,
         "EnergyBand": EnergyBand,
-        "MLP": MLP,
-        "CNN": CNN
+        "ML": ML,
     }
 
     st.markdown(
