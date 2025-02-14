@@ -9,7 +9,9 @@ import pywt
 import numpy as np
 import streamlit as st
 import streamlit_sortables as ss
+import torch
 
+import ml.models.mlp as ml
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
 
@@ -237,6 +239,58 @@ class EnergyBand(rvt_pipeline.Detector):
         order = st.slider("Ordem do filtro (EnergyBand)", min_value=1, max_value=10, value=1)
         return EnergyBand(ref_window, analysis_window, threshold, min_freq, max_freq, order)
 
+class MLP(rvt_pipeline.Detector):
+    """Detects events based on a simple MLP model."""
+
+    def __init__(self, threshold: float, model_file="./data/ml/mlp/model.pkl"):
+        super().__init__(threshold)
+        self.loaded = False
+        self.model_file = model_file
+        self.device = None
+        self.model = None
+        self.n_samples = None
+
+    def _load(self):
+        if self.loaded:
+            return
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.model = ml.MLP.load(self.model_file).to(self.device)
+        self.model.eval()
+        self.n_samples = self.model.model[1].in_features
+        self.loaded = True
+
+
+    @overrides.overrides
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The list of sample indices to check.
+
+        Returns:
+            float: confidence
+        """
+        self._load()
+        data_tensor = torch.tensor(input_data[sample_to_check:sample_to_check+self.n_samples], dtype=torch.float32, device=self.device).unsqueeze(0)
+        with torch.no_grad():
+            confidence = self.model(data_tensor).item()
+        return confidence
+
+
+    @staticmethod
+    def st_config() -> "Threshold":
+        """
+        Configures the threshold detector processor through Streamlit's interface.
+
+        Returns:
+            Threshold: A configured threshold detector instance.
+        """
+        threshold = st.number_input("Limiar", value=0.04)
+        return MLP(threshold)
+
+
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
     available_detectors = {
@@ -244,7 +298,8 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
         "Energy": Energy,
         "Z-score": ZScore,
         "Wavelet": Wavelet,
-        "EnergyBand": EnergyBand
+        "EnergyBand": EnergyBand,
+        "MLP": MLP
     }
 
     st.markdown(

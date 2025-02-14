@@ -50,12 +50,12 @@ def main():
                     })
 
             all_critical_points = set(expected_detections) | set(expected_rebounds)
-            min_distance = 4 * n_samples
+            min_distance = 10 * fs # 10segundo
 
             bg_samples = []
             last_included = 0
             for start in range(0, len(data) - n_samples, n_samples):
-                if all(abs(start - pt) >= min_distance for pt in all_critical_points) and (start - last_included >= 120*min_distance):
+                if all(abs(start - pt) >= min_distance for pt in all_critical_points) and (start - last_included >= 120*fs):
                     bg_samples.append(start)
                     last_included = start
 

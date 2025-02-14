@@ -1,4 +1,5 @@
 """Module to load the detections and background as pytorch datasets
+run test/prepare_dataset.py to extract the necessary audios
 """
 import typing
 import numpy as np
@@ -9,6 +10,7 @@ import torch
 import torch.utils.data as torch_data
 
 import lps_rvt.rvt_types as rvt
+import lps_sp.signal as lps_sp
 
 class AudioDataset(torch_data.Dataset):
     """Class to represent"""
@@ -21,12 +23,12 @@ class AudioDataset(torch_data.Dataset):
         """
         self.data = pd.read_csv(csv_file)
         self.subset = subset
-        self.transform = transform
+        self.transform = transform if transform is not None else lps_sp.Normalization.MIN_MAX_ZERO_CENTERED
 
         if subset is not None:
             self.data = self.data[self.data['Subset'] == str(self.subset)]
 
-        print(subset, ": ", len(self.data[self.data['Classification'] == 1]), "/", len(self.data))
+        # print(subset, ": ", len(self.data[self.data['Classification'] == 1]), "/", len(self.data))
 
     def __len__(self):
         return len(self.data)
@@ -34,7 +36,7 @@ class AudioDataset(torch_data.Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         wav_file = sample['outputfile']
-        classification = sample['Classificação']
+        classification = sample['Classification']
 
         _, audio_data = scipy.wavfile.read(wav_file)
 

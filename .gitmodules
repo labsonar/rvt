@@ -4,3 +4,6 @@
 [submodule "lps_libraries/signal_processing"]
 	path = lps_libraries/signal_processing
 	url = git@github.com:labsonar/signal_processing.git
+[submodule "lps_libraries/ml"]
+	path = lps_libraries/ml
+	url = git@github.com:labsonar/ml.git
