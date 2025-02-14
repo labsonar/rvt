@@ -293,6 +293,60 @@ class MLP(rvt_pipeline.Detector):
         threshold = st.number_input("Limiar", value=0.3)
         return MLP(threshold)
 
+class CNN(rvt_pipeline.Detector):
+    """Detects events based on a simple MLP model."""
+
+    def __init__(self, threshold: float, model_file="./data/ml/models/cnn_spectrogram.pkl"):
+        super().__init__(threshold)
+        self.loaded = False
+        self.model_file = model_file
+        self.device = None
+        self.model = None
+        self.n_samples = None
+        self.transform = None
+
+    def _load(self):
+        if self.loaded:
+            return
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.model = ml.MLP.load(self.model_file).to(self.device)
+        self.model.eval()
+        self.n_samples = 2000
+        self.loaded = True
+        self.transform = rvt_ml.SpectrogramTransform().to(self.device)
+
+    @overrides.overrides
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The list of sample indices to check.
+
+        Returns:
+            float: confidence
+        """
+        self._load()
+
+        data_tensor = torch.tensor(input_data[sample_to_check:sample_to_check+self.n_samples], dtype=torch.float32, device=self.device)
+        data_tensor = self.transform(data_tensor).unsqueeze(0)
+        with torch.no_grad():
+            confidence = self.model(data_tensor).item()
+        return confidence
+
+
+    @staticmethod
+    def st_config() -> "Threshold":
+        """
+        Configures the threshold detector processor through Streamlit's interface.
+
+        Returns:
+            Threshold: A configured threshold detector instance.
+        """
+        threshold = st.number_input("Limiar", value=0.3)
+        return CNN(threshold)
+
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
@@ -302,7 +356,8 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
         "Z-score": ZScore,
         "Wavelet": Wavelet,
         "EnergyBand": EnergyBand,
-        "MLP": MLP
+        "MLP": MLP,
+        "CNN": CNN
     }
 
     st.markdown(
