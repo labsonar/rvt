@@ -303,7 +303,49 @@ class ML(rvt_pipeline.Detector):
         model_type = st.selectbox("Modelo", models, format_func=lambda x: x.name, index=0)
         threshold = st.number_input("Limiar", value=0.3)
         return ML(MLModels(model_type), threshold)
+    
+class Correlation(rvt_pipeline.Detector):
+    """Detects events based on Cross Correlation."""
 
+    def __init__(self, window_size: int, threshold: float, audio_name: str):
+        super().__init__(threshold)
+        self.window_size = window_size
+
+        file_map = rvt_preprocessing.Correlation.get_file_map(False)        
+        self.audio_reference = rvt_preprocessing.Correlation(f'{file_map[audio_name]}')
+
+    @overrides.overrides
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The list of sample indices to check.
+
+        Returns:
+            float: confidence
+        """
+        if sample_to_check + self.window_size <= len(input_data):
+            analysis_data = input_data[sample_to_check:sample_to_check + self.window_size]
+            fs, correlation_result = self.audio_reference.process(8000, analysis_data)
+            return np.max(correlation_result)
+        return 0
+
+    @staticmethod
+    def st_config() -> "Correlation":
+        """
+        Configures the cross correlation detector processor through Streamlit's interface.
+
+        Returns:
+           CrossCorrelation: A configured cross correlation detector instance.
+        """
+        file_map = rvt_preprocessing.Correlation.get_file_map(False)
+
+        reference_name = st.selectbox("Selecione o arquivo de referência:", list(file_map.keys()))
+        window_size = st.number_input("Tamanho da janela", min_value=1, value=20)
+        threshold = st.number_input("Limiar", value=0.05)
+        return Correlation(window_size, threshold, reference_name)
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
@@ -314,6 +356,7 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
         "Wavelet": Wavelet,
         "EnergyBand": EnergyBand,
         "ML": ML,
+        "Correlation": Correlation
     }
 
     st.markdown(
@@ -413,6 +456,14 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
                                 help="Maximum frequency for the EnergyBand Detector.")
     detector_group.add_argument("--energyband-order", type=int, default=1.0,
                                 help="Order for the EnergyBand Detector.")
+    
+    # Corelation parameters
+    detector_group.add_argument("--correlation-window-size", type=int, default=20,
+                                help="Window size for the Correlation.")
+    detector_group.add_argument("--correlation-threshold", type=float, default=50.0,
+                                help="Threshold for the Correlation.")
+    detector_group.add_argument("--correlation-reference", type=str,
+                                help="Audio reference for the Correlation.")
 
 def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector]:
     """
@@ -442,7 +493,10 @@ def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector
                                         args.energyband_threshold,
                                         args.energyband_min_freq,
                                         args.energyband_max_freq,
-                                        args.energyband_order)
+                                        args.energyband_order),
+        "Correlation": lambda: Correlation(args.correlation_window_size,
+                                         args.correlation_threshold,
+                                         args.correlation_reference)
     }
 
     for detector in args.detectors or []:
