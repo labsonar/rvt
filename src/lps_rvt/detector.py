@@ -307,12 +307,14 @@ class ML(rvt_pipeline.Detector):
 class Correlation(rvt_pipeline.Detector):
     """Detects events based on Cross Correlation."""
 
-    def __init__(self, window_size: int, threshold: float, audio_name: str):
+    def __init__(self, window_size: int, threshold: float, audio_names: typing.List[str]):
         super().__init__(threshold)
         self.window_size = window_size
 
-        file_map = rvt_preprocessing.Correlation.get_file_map(False)        
-        self.audio_reference = rvt_preprocessing.Correlation(f'{file_map[audio_name]}')
+        file_map = rvt_preprocessing.Correlation.get_file_map(False) 
+        self.audio_reference = []
+        for name in audio_names:    
+            self.audio_reference.append(rvt_preprocessing.Correlation(f'{file_map[name]}'))
 
     @overrides.overrides
     def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
@@ -328,8 +330,12 @@ class Correlation(rvt_pipeline.Detector):
         """
         if sample_to_check + self.window_size <= len(input_data):
             analysis_data = input_data[sample_to_check:sample_to_check + self.window_size]
-            fs, correlation_result = self.audio_reference.process(8000, analysis_data)
-            return np.max(correlation_result)
+            correlation_peaks = []
+            for reference in self.audio_reference:
+                fs, correlation_result = reference.process(8000, analysis_data)
+                correlation_peaks.append(np.max(correlation_result))
+            correlation_peaks.sort()
+            return correlation_peaks[-1]
         return 0
 
     @staticmethod
@@ -342,10 +348,11 @@ class Correlation(rvt_pipeline.Detector):
         """
         file_map = rvt_preprocessing.Correlation.get_file_map(False)
 
-        reference_name = st.selectbox("Selecione o arquivo de referência:", list(file_map.keys()))
+        reference_names = st.multiselect("Selecione os arquivo de referência:", 
+                                         options=list(file_map.keys()))
         window_size = st.number_input("Tamanho da janela", min_value=1, value=20)
         threshold = st.number_input("Limiar", value=0.05)
-        return Correlation(window_size, threshold, reference_name)
+        return Correlation(window_size, threshold, reference_names)
 
 def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
