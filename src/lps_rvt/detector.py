@@ -204,7 +204,7 @@ class EnergyBand(rvt_pipeline.Detector):
     to a reference window in determined band."""
 
     def __init__(self, ref_window: int, analysis_window: int, threshold: float,
-                 min_freq: float, max_freq: float, order: int):
+                min_freq: float, max_freq: float, order: int):
         super().__init__(threshold)
         self.detector = Energy(ref_window, analysis_window, threshold)
         self.preprocessing = rvt_preprocessing.BandPass(min_freq, max_freq, order)
@@ -221,9 +221,16 @@ class EnergyBand(rvt_pipeline.Detector):
         Returns:
             float: confidence
         """
-        input_data = self.preprocessing.process(8000, input_data)
-            # pylint: disable=W0511 #TODO fix this to work with diferent fs
-        return self.detector.calc_confidence(input_data, sample_to_check)
+
+        if sample_to_check - self.detector.ref_window >= 0 and \
+                    sample_to_check + self.detector.analysis_window <= len(input_data):
+
+            fs, input_data = self.preprocessing.process(8000, \
+                input_data[sample_to_check-self.detector.ref_window: sample_to_check+self.detector.analysis_window])
+
+            return self.detector.calc_confidence(input_data, self.detector.ref_window)
+
+        return 0
 
     @staticmethod
     def st_config() -> "EnergyBand":
