@@ -11,6 +11,7 @@ import numpy as np
 import streamlit as st
 import streamlit_sortables as ss
 import torch
+import scipy
 
 import ml.models.base_model as lps_ml
 import ml.models.mlp as lps_mlp
@@ -155,11 +156,12 @@ class Wavelet(rvt_pipeline.Detector):
     """Detects events using the Discrete Wavelet Transform."""
 
     def __init__(self, window_size: int, threshold: float,
-                 wavelet: str, level: int):
+                 wavelet: str, level: int, median_filter: bool):
         super().__init__(threshold)
         self.window_size = window_size
         self.wavelet = wavelet
         self.level = level
+        self.median_filter = median_filter
 
     @overrides.overrides
     def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
@@ -178,7 +180,12 @@ class Wavelet(rvt_pipeline.Detector):
             coeffs = pywt.wavedec(analysis_data, self.wavelet, level=self.level)
 
             detail_coeffs = np.concatenate(coeffs[1:])
-            return np.sum(detail_coeffs ** 2)
+
+            if self.median_filter:
+                filtered_coeffs = scipy.signal.medfilt(detail_coeffs, kernel_size=5)
+                return np.sum(filtered_coeffs ** 2)
+            else:
+                return np.sum(detail_coeffs ** 2)
 
         return 0
 
@@ -191,13 +198,14 @@ class Wavelet(rvt_pipeline.Detector):
             Wavelet: A configured Wavelet detector instance.
         """
 
-        wavelet_list = ["haar", "db4", "sym2", "coif2"]
+        wavelet_list = ["db4", "haar", "sym2", "coif2"]
 
         window_size = st.number_input("Janela de análise", min_value=1, value=1000)
-        threshold = st.number_input("Limiar de detecção da Wavelet", min_value=0.0, value=0.1)
+        threshold = st.number_input("Limiar de detecção da Wavelet", min_value=0.0, value=0.2)
         wavelet = st.selectbox("Tipo de Wavelet", wavelet_list)
-        level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1, value=2)
-        return Wavelet(window_size, threshold, wavelet, level)
+        level = st.slider("Nível de decomposição", min_value=1, max_value=5, step=1, value=1)
+        median_filter = st.checkbox("Filtro de Mediana")
+        return Wavelet(window_size, threshold, wavelet, level, median_filter)
 
 class EnergyBand(rvt_pipeline.Detector):
     """Detects events based on an increase in energy compared

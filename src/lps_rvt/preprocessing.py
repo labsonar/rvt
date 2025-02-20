@@ -208,6 +208,36 @@ class BandPass(rvt_pipeline.Preprocessing):
         max_freq = st.number_input("Frequência máxima de corte (Hz)", min_value=1, value=3999)
         order = st.slider("Ordem do filtro", min_value=1, max_value=10, value=1)
         return BandPass(min_freq, max_freq, order)
+    
+class Envelope(rvt_pipeline.Preprocessing):
+    """Processor for applying a envelope detector to the audio signal."""
+
+    def __init__(self) -> None:
+        pass
+
+    def process(self, fs: int, input_data: np.ndarray) -> typing.Tuple[int, np.ndarray]:
+        """
+        Applies a high-pass filter to the input data.
+
+        Args:
+            fs (int): Sampling frequency of the input data.
+            input_data (np.ndarray): The audio signal to be processed.
+
+        Returns:
+            Tuple[int, np.ndarray]: The sampling frequency and the filtered audio signal.
+        """
+        
+        return fs, np.abs(signal.hilbert(input_data))
+
+    @staticmethod
+    def st_config() -> "Envelope":
+        """
+        Configures the high-pass filter processor through Streamlit's interface.
+        
+        Returns:
+            HighPass: A configured high-pass filter processor instance.
+        """
+        return Envelope()
 
 def st_show_preprocessing() -> typing.List[rvt_pipeline.Preprocessing]:
     """
@@ -220,7 +250,8 @@ def st_show_preprocessing() -> typing.List[rvt_pipeline.Preprocessing]:
         "Normalization": Normalization,
         "HighPass": HighPass,
         "Correlation": Correlation,
-        "BandPass": BandPass
+        "BandPass": BandPass,
+        "Envelope": Envelope
     }
 
     st.markdown(
