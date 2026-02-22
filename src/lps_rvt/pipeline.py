@@ -337,6 +337,7 @@ class Pipeline:
                  tolerance_before: int = None,
                  tolerance_after: int = None,
                  debounce_steps: int = 3,
+                 cooldown_samples: int = 16000,
                  loader = rvt.DataLoader()
                  ) -> None:
         self.preprocessors = preprocessors
@@ -348,24 +349,47 @@ class Pipeline:
         self.tolerance_after= tolerance_after if tolerance_after is not None \
                                                 else self.sample_step*6
         self.debounce_steps = debounce_steps
+        self.cooldown_samples = cooldown_samples
         self.loader = loader
 
     def _edge_filter(self, samples: typing.List[int],
-                     confidence: typing.List[float]) -> typing.List[int]:
+                     confidence: typing.List[float],
+                     cooldown_samples: int = 16000) -> typing.List[int]:
+        """
+        Filters raw detections into distinct events. Uses minimum burst length
+        and a cooldown period to prevent rapid re-triggering.
+        """
         if not samples:
             return []
 
         edges = []
         current_block = [0]
+        
+        last_event_sample = -cooldown_samples
 
         for i in range(1, len(samples)):
-            if samples[i] - samples[i - 1] >  self.debounce_steps * self.sample_step:
-                selected_confidence = [confidence[i] for i in current_block]
-                index = np.argmax(selected_confidence)
-                edges.append(samples[current_block[index]])
+            break_threshold = self.sample_step * 2
+            
+            if samples[i] - samples[i - 1] > break_threshold:
+                if len(current_block) >= self.debounce_steps:
+                    selected_confidence = [confidence[j] for j in current_block]
+                    index = np.argmax(selected_confidence)
+                    potential_event_sample = samples[current_block[index]]
+                    
+                    if potential_event_sample - last_event_sample >= cooldown_samples:
+                        edges.append(potential_event_sample)
+                        last_event_sample = potential_event_sample
+                        
                 current_block.clear()
 
             current_block.append(i)
+
+        if len(current_block) >= self.debounce_steps:
+            selected_confidence = [confidence[j] for j in current_block]
+            index = np.argmax(selected_confidence)
+            potential_event_sample = samples[current_block[index]]
+            if potential_event_sample - last_event_sample >= cooldown_samples:
+                edges.append(potential_event_sample)
 
         return edges
 
@@ -399,7 +423,7 @@ class Pipeline:
 
         for detector in self.detectors:
             detections, confidence = detector.detect(data, current_samples_to_check)
-            detections = self._edge_filter(detections, confidence)
+            detections = self._edge_filter(detections, confidence, cooldown_samples=self.cooldown_samples)
             evaluation = detector.evaluate(result.expected_detections,
                                            result.expected_rebounds,
                                            samples_to_check,

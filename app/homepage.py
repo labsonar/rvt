@@ -55,7 +55,7 @@ class Homepage:
 
         return ammunition_types, buoys, subsets
 
-    def show_pipeline_config(self) -> typing.Tuple[int, int, int, int]:
+    def show_pipeline_config(self) -> typing.Tuple[int, int, int, int, int]:
         """
         Displays the Streamlit sidebar for selecting Pipeline configuration.
         It returns the tuple of parameters files based on the user's choices.
@@ -63,8 +63,14 @@ class Homepage:
         sample_step = st.number_input("Passo de análise (amostras)", min_value=1, value=80)
         tolerance_before = st.number_input("Tolerância antes (amostras)", min_value=5, value=160)
         tolerance_after = st.number_input("Tolerância depois (amostras)", min_value=5, value=240)
-        debounce_steps = st.number_input("Debounce_steps (passos)", min_value=1, value=20)
-        return sample_step, tolerance_before, tolerance_after, debounce_steps
+        
+        st.markdown("**Agrupamento de Eventos (Falsos Positivos)**")
+        debounce_steps = st.number_input("Burst mínimo (análises consecutivas)", min_value=1, value=3,
+                                         help="Número mínimo de passos de análise acima do limiar para ser considerado um evento.")
+        cooldown_samples = st.number_input("Cooldown (amostras mortas)", min_value=0, value=16000,
+                                           help="Tempo morto (em amostras) após uma detecção onde novos alertas são ignorados.")
+        
+        return sample_step, tolerance_before, tolerance_after, debounce_steps, cooldown_samples
 
     def run(self) -> None:
         """
@@ -80,7 +86,7 @@ class Homepage:
                 ammunition_types, buoys, subsets = self.show_dataloader_selection()
 
             with st.expander("Configuração do Pipeline", expanded=False):
-                sample_step, tolerance_before, tolerance_after, debounce_steps = \
+                sample_step, tolerance_before, tolerance_after, debounce_steps, cooldown_samples = \
                         self.show_pipeline_config()
 
             with st.expander("Configuração do Pré-processamento", expanded=False):
@@ -110,8 +116,12 @@ class Homepage:
         with col2:
             st.image("./data/logo.png", width=300)
 
-        loader = rvt_loader.ArtifactLoader() if loader_type == "Artefato" \
-                                            else rvt_loader.DataLoader()
+        if loader_type == "Artefato":
+            loader = rvt_loader.ArtifactLoader()
+        elif loader_type == "Marambaia":
+            loader = rvt_loader.MarambaiaLoader()
+        else:
+            loader = rvt_loader.DataLoader()
         selected_files = loader.get_files(ammunition_types, buoys, subsets)
 
         if show_results:
@@ -121,6 +131,7 @@ class Homepage:
                                             tolerance_before=tolerance_before,
                                             tolerance_after=tolerance_after,
                                             debounce_steps=debounce_steps,
+                                            cooldown_samples=cooldown_samples,
                                             loader=loader)
             st.session_state["current_result"] = pipeline.apply(selected_files)
 
@@ -227,9 +238,9 @@ class Homepage:
                         {'selector': 'tbody td', 'props': [('border', '1px solid black'),
                                                         ('text-align', 'center')]}
                     ])
-                st.dataframe(styled2_df, use_container_width=False, hide_index=True)
+                st.dataframe(styled2_df, width='content', hide_index=True)
                 st.markdown("---")
-                st.dataframe(styled_df, use_container_width=False, hide_index=True)
+                st.dataframe(styled_df, width='content', hide_index=True)
 
             else:
 
@@ -262,7 +273,7 @@ class Homepage:
                             {'selector': 'tbody td', 'props': [('border', '1px solid black'),
                                                             ('text-align', 'center')]}
                         ])
-                    st.dataframe(styled2_df, use_container_width=False, hide_index=True)
+                    st.dataframe(styled2_df, width='content', hide_index=True)
 
 if __name__ == "__main__":
     app = Homepage()

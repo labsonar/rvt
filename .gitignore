@@ -1,10 +1,22 @@
 #Libraries
 template_library
+lps_libraries/ml
 
 # Data
 data/RVT/
 data/Analysis/
 data/Correlation/
+data/new_data/
+data/new_data_og/
+data/ml/models/cnn1d_spectrogram.pkl
+data/ml/models/cnn1d_splash/
+data/docs/marambaia_ml_info.csv
+
+# Docker
+
+Dockerfile
+docker-compose.yml
+start_app.sh
 
 # Testing files
 Analysis/

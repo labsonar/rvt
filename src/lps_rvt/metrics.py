@@ -80,9 +80,9 @@ class Metric(enum.Enum):
 
 def st_show_metrics_config():
     """Displays the metrics configuration interface and returns the set of metrics."""
-    loader_type = st.selectbox("Modo de análise",
-                    ["Artefato", "Arquivo de teste"],
-                    index=0)
+    loader_type = st.radio("Selecione os arquivos de entrada",
+                    ["Artefato", "Arquivo de teste", "Marambaia"],
+                    horizontal=True)
 
     plot_type = st.selectbox("Tipo de exibição",
                     ["Plot no tempo", "Figuras de mérito"],

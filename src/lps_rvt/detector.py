@@ -16,6 +16,7 @@ import scipy
 import ml.models.base_model as lps_ml
 import ml.models.mlp as lps_mlp
 import ml.models.cnn as lps_cnn
+import ml.models.cnn1d as lps_cnn1d
 import lps_rvt.pipeline as rvt_pipeline
 import lps_rvt.preprocessing as rvt_preprocessing
 import lps_rvt.ml_loader as rvt_ml
@@ -40,7 +41,7 @@ class Threshold(rvt_pipeline.Detector):
             float: confidence
         """
         if sample_to_check + self.window_size <= len(input_data):
-            return np.mean(input_data[sample_to_check:sample_to_check + self.window_size])
+            return np.max(np.abs(input_data[sample_to_check:sample_to_check + self.window_size]))
         return 0
 
 
@@ -52,9 +53,118 @@ class Threshold(rvt_pipeline.Detector):
         Returns:
             Threshold: A configured threshold detector instance.
         """
-        window_size = st.number_input("Tamanho da janela", min_value=1, value=10)
-        threshold = st.number_input("Limiar", value=0.04)
+        window_size = st.number_input("Tamanho da janela (Threshold)", min_value=1, value=10)
+        threshold = st.number_input("Limiar (Threshold)", value=0.04)
         return Threshold(window_size, threshold)
+
+class TKEO(rvt_pipeline.Detector):
+    """Detects events using the Teager-Kaiser Energy Operator."""
+
+    def __init__(self, window_size: int, threshold: float):
+        super().__init__(threshold)
+        self.window_size = window_size
+
+    @overrides.overrides
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The list of sample indices to check.
+
+        Returns:
+            float: confidence
+        """
+        if sample_to_check > 0 and sample_to_check + self.window_size + 1 < len(input_data):
+            # Calculate TKEO for the window
+            # y[n] = x^2[n] - x[n-1]*x[n+1]
+            idx = np.arange(sample_to_check, sample_to_check + self.window_size)
+            x_n = input_data[idx]
+            x_prev = input_data[idx - 1]
+            x_next = input_data[idx + 1]
+            
+            tkeo = x_n**2 - x_prev * x_next
+            # Normalize or return max energy in window
+            return np.max(tkeo)
+        return 0
+
+    @staticmethod
+    def st_config() -> "TKEO":
+        """
+        Configures the TKEO detector processor through Streamlit's interface.
+
+        Returns:
+            TKEO: A configured TKEO detector instance.
+        """
+        window_size = st.number_input("Janela de análise (TKEO)", min_value=1, value=100)
+        threshold = st.number_input("Limiar de energia (TKEO)", value=0.01)
+        return TKEO(window_size, threshold)
+
+class SpectralFlux(rvt_pipeline.Detector):
+    """Detects events by measuring the positive rate of change of spectral power (Onset Detection)."""
+
+    def __init__(self, window_size: int, threshold: float):
+        super().__init__(threshold)
+        self.window_size = window_size
+
+    @overrides.overrides
+    def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
+        """
+        Estimate sample confidence as a detection by calculating spectral flux.
+
+        Args:
+            input_data (np.ndarray): The data to search for events.
+            sample_to_check (int): The sample index to check.
+
+        Returns:
+            float: confidence (Rectified Spectral Flux)
+        """
+        if sample_to_check > 0 and sample_to_check + self.window_size <= len(input_data):
+            # Needs a window slightly larger than analysis to get at least 2 consecutive STFT frames
+            # to compare them.
+            extended_window = self.window_size * 2
+            
+            # Ensure it doesn't go out of bounds
+            start_idx = max(0, sample_to_check - self.window_size)
+            end_idx = min(len(input_data), sample_to_check + self.window_size)
+            
+            analysis_data = input_data[start_idx:end_idx]
+            
+            if len(analysis_data) < self.window_size:
+                return 0
+                
+            # Calculate STFT. Use a small nperseg to get fine time resolution for the flux.
+            # nperseg=64 or 128 is good for fast transients in 8kHz audio.
+            nperseg = min(128, len(analysis_data))
+            f, t, Zxx = scipy.signal.stft(analysis_data, nperseg=nperseg)
+            
+            mag = np.abs(Zxx)
+            
+            # Calculates the difference between consecutive frames
+            flux = np.diff(mag, axis=1)
+            rectified_flux = np.maximum(0, flux)
+            
+            # Sum across all frequencies for each time step
+            total_flux_over_time = np.sum(rectified_flux, axis=0)
+            
+            # Return the maximum flux found in this window as the confidence
+            if len(total_flux_over_time) > 0:
+                return np.max(total_flux_over_time)
+                
+        return 0
+
+    @staticmethod
+    def st_config() -> "SpectralFlux":
+        """
+        Configures the Spectral Flux detector processor through Streamlit's interface.
+
+        Returns:
+            SpectralFlux: A configured SpectralFlux detector instance.
+        """
+        window_size = st.number_input("Janela de análise (Spectral Flux)", min_value=128, value=1000)
+        threshold = st.number_input("Limiar de fluxo (Spectral Flux)", value=0.5)
+        return SpectralFlux(window_size, threshold)
 
 class Energy(rvt_pipeline.Detector):
     """Detects events based on an increase in energy compared to a reference window."""
@@ -261,6 +371,7 @@ class EnergyBand(rvt_pipeline.Detector):
 class MLModels(enum.Enum):
     MLP = 0
     CNN = 1
+    CNN1D = 2
 
     def __str__(self):
         return self.name.split(".")[-1].lower()
@@ -281,11 +392,13 @@ class ML(rvt_pipeline.Detector):
     def _load(self):
         if self.loaded:
             return
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # Force CPU as per user request
+        self.device = 'cpu'
         self.model = lps_ml.BaseModel.load(self.model_file).to(self.device)
         self.model.eval()
         self.loaded = True
-        self.transform = rvt_ml.SpectrogramTransform().to(self.device)
+        if self.model_type != MLModels.CNN1D:
+            self.transform = rvt_ml.SpectrogramTransform().to(self.device)
 
     @overrides.overrides
     def calc_confidence(self, input_data: np.ndarray, sample_to_check: int) -> float:
@@ -301,7 +414,14 @@ class ML(rvt_pipeline.Detector):
         """
         self._load()
         data_tensor = torch.tensor(input_data[sample_to_check:sample_to_check+self.n_samples], dtype=torch.float32, device=self.device).unsqueeze(0)
-        data_tensor = self.transform(data_tensor).unsqueeze(0)
+        
+        if self.model_type == MLModels.CNN1D:
+            # Expects (Batch, Channels, Samples)
+            data_tensor = data_tensor.unsqueeze(1)
+        else:
+            # Spectrogram models expects (Batch, Channels, Freq, Time)
+            data_tensor = self.transform(data_tensor).unsqueeze(0)
+            
         with torch.no_grad():
             confidence = self.model(data_tensor).item()
         return confidence
@@ -373,6 +493,8 @@ def st_show_detect() -> typing.List[rvt_pipeline.Detector]:
     """Displays the detector configuration interface and returns the configured detectors."""
     available_detectors = {
         "Threshold": Threshold,
+        "TKEO": TKEO,
+        "Spectral Flux": SpectralFlux,
         "Energy": Energy,
         "Z-score": ZScore,
         "Wavelet": Wavelet,
@@ -430,7 +552,7 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
                                             "Define the detectors used in the pipeline.")
 
     detector_group.add_argument("-d", "--detectors", nargs="+",
-                                choices=["Threshold", "Energy", "Z-score"],
+                                choices=["Threshold", "TKEO", "Spectral Flux", "Energy", "Z-score"],
                                 help="Select the detectors to be used.")
 
     # Threshold parameters
@@ -438,6 +560,18 @@ def add_detector_options(parser: argparse.ArgumentParser) -> None:
                                 help="Window size for the Threshold.")
     detector_group.add_argument("--threshold-value", type=float, default=0.04,
                                 help="Threshold value for the Threshold.")
+
+    # TKEO parameters
+    detector_group.add_argument("--tkeo-window", type=int, default=100,
+                                help="Window size for the TKEO.")
+    detector_group.add_argument("--tkeo-threshold", type=float, default=0.01,
+                                help="Threshold value for the TKEO.")
+
+    # Spectral Flux parameters
+    detector_group.add_argument("--spectral-flux-window", type=int, default=1000,
+                                help="Window size for the Spectral Flux.")
+    detector_group.add_argument("--spectral-flux-threshold", type=float, default=0.5,
+                                help="Threshold value for the Spectral Flux.")
 
     # Energy parameters
     detector_group.add_argument("--energy-ref-window", type=int, default=8000,
@@ -502,6 +636,10 @@ def get_detectors(args: argparse.Namespace) -> typing.List[rvt_pipeline.Detector
     available_detectors = {
         "Threshold": lambda: Threshold(args.threshold_window,
                                             args.threshold_value),
+        "TKEO": lambda: TKEO(args.tkeo_window,
+                                    args.tkeo_threshold),
+        "Spectral Flux": lambda: SpectralFlux(args.spectral_flux_window,
+                                              args.spectral_flux_threshold),
         "Energy": lambda: Energy(args.energy_ref_window,
                                         args.energy_analysis_window,
                                         args.energy_threshold),
