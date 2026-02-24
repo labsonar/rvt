@@ -123,4 +123,8 @@ def st_show_metrics_config():
         metric = available_metrics[metric_name]
         metrics.append(metric)
 
-    return loader_type, plot_type, metrics
+    st.markdown("---")
+    ignore_ricochets = st.toggle("Ignorar Ricochetes (como anomalia)", value=True)
+    ignore_failures = st.toggle("Ignorar Falhas (como anomalia)", value=True)
+
+    return loader_type, plot_type, metrics, ignore_ricochets, ignore_failures

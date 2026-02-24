@@ -96,7 +96,7 @@ class Homepage:
                 detectors = rvt_detector.st_show_detect()
 
             with st.expander("Exibição dos resultados", expanded=False):
-                loader_type, plot_type, metrics = rvt_metrics.st_show_metrics_config()
+                loader_type, plot_type, metrics, ignore_ricochets, ignore_failures = rvt_metrics.st_show_metrics_config()
 
             if plot_type == "Figuras de mérito":
                 st.markdown("---")
@@ -119,7 +119,7 @@ class Homepage:
         if loader_type == "Artefato":
             loader = rvt_loader.ArtifactLoader()
         elif loader_type == "Marambaia":
-            loader = rvt_loader.MarambaiaLoader()
+            loader = rvt_loader.MarambaiaLoader(ignore_ricochets=ignore_ricochets, ignore_failures=ignore_failures)
         else:
             loader = rvt_loader.DataLoader()
         selected_files = loader.get_files(ammunition_types, buoys, subsets)

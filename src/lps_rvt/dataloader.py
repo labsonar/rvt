@@ -94,21 +94,24 @@ class ArtifactLoader(BaseLoader):
         return artifacts_df["Artifact File ID"].tolist()
 
 class MarambaiaLoader(BaseLoader):
-    """ Loader for new marambaia data files."""
-    artifact_id_column = "wav filename"
+    """ Loader for new marambaia data format """
+    artifact_id_column = "arquivo"
 
     def __init__(self,
-                 description_filename: str = "./data/new_data/consolidated_marambaia_logs.csv",
-                 artifacts_filename: str = "./data/new_data/consolidated_marambaia_logs.csv",
-                 data_dir: str = "./data/new_data"):
+                 description_filename: str = "./data/marambaia/marambaia_artifacts.csv",
+                 artifacts_filename: str = "./data/marambaia/marambaia_artifacts.csv",
+                 data_dir: str = "./data/marambaia/new_data",
+                 ignore_ricochets: bool = True,
+                 ignore_failures: bool = True):
         # Using the same CSV for both description and artifacts
-        self.description = pd.read_csv(description_filename, sep=';')
-        self.artifacts = pd.read_csv(artifacts_filename, sep=';')
-        self.artifact_id_column = "wav filename"
+        self.description = pd.read_csv(description_filename, sep=',')
+        self.artifacts = pd.read_csv(artifacts_filename, sep=',')
+        self.artifact_id_column = "arquivo"
         self.data_dir = data_dir
+        self.ignore_ricochets = ignore_ricochets
+        self.ignore_failures = ignore_failures
 
         # Pre-process columns for filtering
-        # Map 'splash valido' to Ammunition Type
         def map_ammunition(val):
             val = str(val).strip()
             if val.lower() == 'exsup':
@@ -119,18 +122,13 @@ class MarambaiaLoader(BaseLoader):
                 return rvt.Ammunition.HE3M.value
             return None
         
-        self.description['Type'] = self.description['splash valido'].apply(map_ammunition)
+        self.description['Type'] = self.description['ammo'].apply(map_ammunition)
         
-        # Map 'boia' to integer ID
         def map_buoy(val):
-            val = str(val).strip()
             try:
-                if val.lower().startswith('boia'):
-                    part = val.lower().split('_')[0]
-                    return int(''.join(filter(str.isdigit, part)))
+                return int(val)
             except:
-                pass
-            return -1
+                return -1
 
         self.description['Bouy'] = self.description['boia'].apply(map_buoy)
 
@@ -149,9 +147,8 @@ class MarambaiaLoader(BaseLoader):
         if buoys:
             df_filtered = df_filtered[df_filtered["Bouy"].isin(buoys)]
         
-        # TODO: Ignoring subsets for now as the CSV doesn't have them
-        
-        unique_files = df_filtered["wav filename"].unique()
+        # TODO: Ignoring subsets for now
+        unique_files = df_filtered[self.artifact_id_column].unique()
         return [f.replace(".wav", "") for f in unique_files]
 
     def get_data(self, file_id: typing.Union[int, str], fs: int = 8000):
@@ -164,17 +161,19 @@ class MarambaiaLoader(BaseLoader):
 
     def get_critical_points(self, file_id: typing.Union[int, str], fs: int) -> \
             typing.Tuple[typing.List[int], typing.List[int]]:
-        """Returns samples where shots occur based on 'splash moment'."""
+        """Returns samples where shots occur based on 't_splash'."""
         expected_detections = []
         expected_rebounds = []
         
-        # Filter artifacts for this file
-        filename = f"{file_id}.wav"
-        artifacts_filtered = self.artifacts[self.artifacts[self.artifact_id_column] == filename]
+        # Filter artifacts for this file. 
+        artifacts_filtered = self.artifacts[self.artifacts[self.artifact_id_column] == str(file_id)]
 
         for _, artifact in artifacts_filtered.iterrows():
-            # Parse 'splash moment' M:SS.mmm
-            moment_str = artifact['splash moment']
+            # Parse 't_splash' M:SS.mmm
+            moment_str = artifact['t_splash']
+            if pd.isna(moment_str):
+                continue
+                
             try:
                 if str(moment_str).count(':') == 1:
                     match_time = "00:" + str(moment_str)
@@ -182,17 +181,17 @@ class MarambaiaLoader(BaseLoader):
                     match_time = str(moment_str)
                 
                 delta = pd.Timedelta(match_time).total_seconds()
-                
-                # Check validation column
-                if str(artifact.get('splash valido', '')).strip().lower() == 'exsup':
-                     expected_detections.append(int(delta * fs))
-                elif str(artifact.get('splash valido', '')).strip() == '1_GAE':
-                     expected_detections.append(int(delta * fs))
+
+                is_ricochet = str(artifact.get('ricochete', '')).strip().lower() == 'sim'
+                is_failure = str(artifact.get('falha', '')).strip().lower() == 'sim'
+
+                if (self.ignore_ricochets and is_ricochet) or (self.ignore_failures and is_failure):
+                    expected_rebounds.append(int(delta * fs))
                 else:
                     expected_detections.append(int(delta * fs))
 
             except Exception as e:
-                print(f"Error parsing time for {filename}: {e}")
+                print(f"Error parsing time for {file_id}: {e}")
                 continue
 
         return expected_detections, expected_rebounds
